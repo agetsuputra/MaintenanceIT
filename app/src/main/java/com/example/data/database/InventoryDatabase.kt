@@ -7,8 +7,9 @@ import androidx.room.RoomDatabase
 import com.example.data.model.Asset
 import com.example.data.model.Repair
 import com.example.data.model.Maintenance
+import com.example.data.model.AssetUpdateLog
 
-@Database(entities = [Asset::class, Repair::class, Maintenance::class], version = 2, exportSchema = false)
+@Database(entities = [Asset::class, Repair::class, Maintenance::class, AssetUpdateLog::class], version = 3, exportSchema = false)
 abstract class InventoryDatabase : RoomDatabase() {
     abstract fun inventoryDao(): InventoryDao
 

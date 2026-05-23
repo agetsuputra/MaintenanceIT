@@ -47,3 +47,17 @@ data class Maintenance(
     val photoUser: String?,   // Watermarked handover
     val technician: String
 )
+
+@Entity(tableName = "asset_updates")
+data class AssetUpdateLog(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val inventoryNumber: String,
+    val updateTime: Long,
+    val oldLocation: String,
+    val newLocation: String,
+    val oldStatus: String,
+    val newStatus: String,
+    val oldDescription: String?,
+    val newDescription: String?,
+    val reasonForPermanentDamage: String? = null
+)
