@@ -54,6 +54,10 @@ import android.util.Base64
 import com.example.data.model.Maintenance
 import com.example.data.model.Repair
 import com.example.ui.viewmodel.ITViewModel
+import kotlinx.coroutines.delay
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -255,10 +259,13 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var currentTab by remember { mutableStateOf(AppTab.Dashboard) }
     var currentSubScreen by remember { mutableStateOf(SubScreen.List) }
+    var showSplash by remember { mutableStateOf(true) }
 
-    // Seed preview database if empty
+    // Seed preview database if empty and trigger splash fadeout
     LaunchedEffect(Unit) {
         viewModel.seedSampleDataIfEmpty()
+        delay(1500)
+        showSplash = false
     }
 
     // DB States
@@ -304,18 +311,77 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
-    Scaffold(
-        modifier = modifier.testTag("main_screen_scaffold"),
+    if (showSplash) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    modifier = Modifier.size(130.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.app_logo),
+                            contentDescription = "App Logo",
+                            modifier = Modifier.size(90.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "IT Support Service",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Record & Maintenance Hub",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    } else {
+        Scaffold(
+            modifier = modifier.testTag("main_screen_scaffold"),
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Build,
-                            contentDescription = "Logo",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 10.dp)
+                                .size(36.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(8.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.app_logo),
+                                contentDescription = "Logo",
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
                         Column {
                             Text(
                                 "IT Support Service",
@@ -407,7 +473,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     } else {
                                         Toast.makeText(context, "Ekspor gagal!", Toast.LENGTH_SHORT).show()
                                     }
-                                }
+                                },
+                                onOpenScanner = { callback -> showingBarcodeScanner = callback }
                             )
                         }
                         SubScreen.AddAsset -> {
@@ -419,7 +486,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     }
                                 },
                                 onCancel = { currentSubScreen = SubScreen.List },
-                                assetList = assets
+                                assetList = assets,
+                                onOpenScanner = { callback -> showingBarcodeScanner = callback }
                             )
                         }
                         else -> {}
@@ -598,6 +666,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
             onDismiss = { showingBarcodeScanner = null }
         )
     }
+    }
 }
 
 // ==================== DASHBOARD & INVENTORY ====================
@@ -609,7 +678,8 @@ fun DashboardScreen(
     isFirebaseEnabled: Boolean,
     onAddAssetClick: () -> Unit,
     onAssetClick: (Asset) -> Unit,
-    onExportClick: () -> Unit
+    onExportClick: () -> Unit,
+    onOpenScanner: (((String) -> Unit)) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val filteredAssets = assets.filter {
@@ -756,6 +826,22 @@ fun DashboardScreen(
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Cari aset berdasarkan kode, nama, lokasi...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(
+                        onClick = {
+                            onOpenScanner { code ->
+                                searchQuery = code
+                            }
+                        },
+                        modifier = Modifier.testTag("btn_dashboard_scan")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = "Scan QR/Barcode",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -954,7 +1040,12 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
 // Dialog to input new Asset
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddAssetForm(onSave: (Asset) -> Unit, onCancel: () -> Unit, assetList: List<Asset>) {
+fun AddAssetForm(
+    onSave: (Asset) -> Unit,
+    onCancel: () -> Unit,
+    assetList: List<Asset>,
+    onOpenScanner: (((String) -> Unit)) -> Unit
+) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
@@ -996,6 +1087,22 @@ fun AddAssetForm(onSave: (Asset) -> Unit, onCancel: () -> Unit, assetList: List<
                     onValueChange = { invNum = it.trim().uppercase(Locale.getDefault()) },
                     label = { Text("Nomor Inventaris Aset") },
                     placeholder = { Text("Contoh: INV-LP-025") },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                onOpenScanner { code ->
+                                    invNum = code.trim().uppercase(Locale.getDefault())
+                                }
+                            },
+                            modifier = Modifier.testTag("btn_inv_number_scan")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.QrCodeScanner,
+                                contentDescription = "Scan QR/Barcode",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -3517,25 +3624,39 @@ fun BarcodeScannerDialog(
     var scanError by remember { mutableStateOf<String?>(null) }
 
     val qrScanner = remember {
-        val options = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
-            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS)
-            .build()
-        com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(context, options)
+        try {
+            val options = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+                .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS)
+                .build()
+            com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(context, options)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     val launchScanner = {
-        qrScanner.startScan()
-            .addOnSuccessListener { barcode ->
-                val result = barcode.rawValue
-                if (!result.isNullOrBlank()) {
-                    keyboardController?.hide()
-                    focusManager.clearFocus(force = true)
-                    onAssetSelected(result)
-                }
+        if (qrScanner != null) {
+            try {
+                qrScanner.startScan()
+                    .addOnSuccessListener { barcode ->
+                        val result = barcode.rawValue
+                        if (!result.isNullOrBlank()) {
+                            keyboardController?.hide()
+                            focusManager.clearFocus(force = true)
+                            onAssetSelected(result)
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        scanError = "Pindai gagal atau dibatalkan."
+                    }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                scanError = "Layanan pemindai tidak tersedia di perangkat ini."
             }
-            .addOnFailureListener { e ->
-                scanError = "Pindai gagal atau dibatalkan."
-            }
+        } else {
+            scanError = "Fitur scan tidak didukung di perangkat ini (GMS tidak tersedia)."
+        }
     }
 
     // Proactively launch scanner when dialog first opens

@@ -351,14 +351,23 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         }
     }
 
-    private fun parseStringPhotoForCsv(photoStr: String?): String {
+    private fun escapeHtml(str: String): String {
+        return str.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;")
+    }
+
+    private fun getEmbeddedPhotoHtml(photoStr: String?): String {
         if (photoStr.isNullOrBlank()) return "Tidak ada foto"
-        val parts = photoStr.split("|||")
-        return if (parts.size >= 3) {
-            "URL: ${parts[0]} [Lokasi: ${parts[1]}, Tgl: ${parts[2]}]"
-        } else {
-            "URL: ${parts[0]}"
+        val (url, loc, date) = parseWatermarkedPhoto(photoStr)
+        if (url.startsWith("data:image") && url.contains("base64,")) {
+            return "<div style=\"text-align:center;\"><img src=\"$url\" height=\"100\" width=\"133\" style=\"border:1px solid #ccc;\" /><br/><small style=\"font-size:10px;color:#555;\">${escapeHtml(loc)}<br/>${escapeHtml(date)}</small></div>"
+        } else if (url.startsWith("http")) {
+            return "<div style=\"text-align:center;\"><img src=\"$url\" height=\"100\" width=\"133\" style=\"border:1px solid #ccc;\" /><br/><small style=\"font-size:10px;color:#555;\">${escapeHtml(loc)}<br/>${escapeHtml(date)}</small></div>"
         }
+        return "Tidak ada foto"
     }
 
     // --- Excel / CSV Exporter ---
@@ -369,140 +378,177 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         val timestamp = dateFileFormat.format(Date())
 
         val filename: String
-        val csvHeader: StringBuilder = StringBuilder()
-        val csvContent = StringBuilder()
-        val photoFiles = mutableMapOf<String, File>()
+        val html = StringBuilder()
 
-        // Write immutable header safeguarding instructions to declare Read-Only status
-        csvHeader.append("# ==========================================================================================\n")
-        csvHeader.append("# SISTEM PROTEKSI & VERIFIKASI MONITORING TIM IT (READ-ONLY REPORT DOCUMENT)\n")
-        csvHeader.append("# DOKUMEN INI TELAH DI-GENERASI SECARA ELEKTRONIK DAN BERSIFAT READ-ONLY.\n")
-        csvHeader.append("# KODE VERIFIKASI KEASLIAN ADALAH DIGITAL SIGNATURE UNIK YANG DIHASILKAN SISTEM TIAP BARIS.\n")
-        csvHeader.append("# APABILA TERJADI MODIFIKASI DATA SECARA MANUAL, MAKA KODE VERIFIKASI AKAN BATAL/TIDAK COCOK.\n")
-        csvHeader.append("# ==========================================================================================\n")
+        // HTML Header with Excel gridlines instruction
+        html.append("<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" xmlns=\"http://www.w3.org/TR/REC-html40\">\n")
+        html.append("<head>\n")
+        html.append("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n")
+        html.append("<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Laporan IT</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->\n")
+        html.append("<style>\n")
+        html.append("  body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; }\n")
+        html.append("  table { border-collapse: collapse; margin: 15px 0; }\n")
+        html.append("  th { background-color: #0288D1; color: #FFFFFF; font-weight: bold; border: 1px solid #000000; padding: 10px; text-align: center; font-size: 13px; }\n")
+        html.append("  td { border: 1px solid #B0BEC5; padding: 10px; vertical-align: middle; text-align: left; font-size: 12px; }\n")
+        html.append("  .title-row { background-color: #E1F5FE; font-weight: bold; font-size: 16px; text-align: center; color: #01579B; padding: 15px; }\n")
+        html.append("  .sec-decl { background-color: #FFF9C4; font-weight: bold; font-size: 11px; text-align: center; padding: 8px; color: #F57F17; }\n")
+        html.append("</style>\n")
+        html.append("</head>\n")
+        html.append("<body>\n")
 
         val assetsList = allAssets.value
         val assetMap = assetsList.associateBy { it.inventoryNumber }
 
         when (type) {
             "assets" -> {
-                filename = "List_Inventaris_IT_$timestamp.csv"
-                csvHeader.append("No. Inventaris;Nama Perangkat;Kategori;Lokasi;Status;Deskripsi;Tanggal Terdaftar;Kode Verifikasi Keaslian (SHA-Signature)\n")
+                filename = "List_Inventaris_IT_$timestamp.xls"
+                html.append("<table>\n")
+                html.append("  <tr><td colspan=\"8\" class=\"title-row\"><b>DOKUMEN INVENTARIS ASET TIM IT SUPPORT</b></td></tr>\n")
+                html.append("  <tr><td colspan=\"8\" class=\"sec-decl\">SISTEM PROTEKSI SECURE RECORD VERIFIED VER.2.6 - READ-ONLY - DATA SIGNED</td></tr>\n")
+                html.append("  <tr>\n")
+                html.append("    <th>No. Inventaris</th>\n")
+                html.append("    <th>Nama Perangkat</th>\n")
+                html.append("    <th>Kategori</th>\n")
+                html.append("    <th>Lokasi</th>\n")
+                html.append("    <th>Status</th>\n")
+                html.append("    <th>Deskripsi</th>\n")
+                html.append("    <th>Tanggal Terdaftar</th>\n")
+                html.append("    <th>Kode Verifikasi Keaslian (SHA-Signature)</th>\n")
+                html.append("  </tr>\n")
+
                 assetsList.forEach { a ->
                     val verificationHash = generateTamperProofHash(a.inventoryNumber, a.name, a.type, a.location, a.status)
-                    val row = String.format(
-                        "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"\n",
-                        a.inventoryNumber.replace("\"", "\"\""),
-                        a.name.replace("\"", "\"\""),
-                        a.type.replace("\"", "\"\""),
-                        a.location.replace("\"", "\"\""),
-                        a.status.replace("\"", "\"\""),
-                        (a.description ?: "").replace("\"", "\"\""),
-                        dateFormat.format(Date(a.createdAt)),
-                        verificationHash
-                    )
-                    csvContent.append(row)
+                    html.append("  <tr>\n")
+                    html.append("    <td>${escapeHtml(a.inventoryNumber)}</td>\n")
+                    html.append("    <td>${escapeHtml(a.name)}</td>\n")
+                    html.append("    <td>${escapeHtml(a.type)}</td>\n")
+                    html.append("    <td>${escapeHtml(a.location)}</td>\n")
+                    html.append("    <td><b>${escapeHtml(a.status)}</b></td>\n")
+                    html.append("    <td>${escapeHtml(a.description ?: "")}</td>\n")
+                    html.append("    <td>${dateFormat.format(Date(a.createdAt))}</td>\n")
+                    html.append("    <td style=\"font-family: monospace;\">$verificationHash</td>\n")
+                    html.append("  </tr>\n")
                 }
+                html.append("</table>\n")
             }
             "repairs" -> {
-                filename = "Laporan_Perbaikan_IT_$timestamp.csv"
-                csvHeader.append("ID Perbaikan;No. Inventaris;Nama Perangkat;Lokasi Perangkat;Waktu Mulai;Waktu Selesai;Kendala;Penyebab;Tindak Lanjut;Status;Alasan Hold;Estimasi;Teknisi;Foto Sebelum;Foto Sesudah;Foto Bersama Unit;Kode Verifikasi Keaslian (SHA-Signature)\n")
+                filename = "Laporan_Perbaikan_IT_$timestamp.xls"
+                html.append("<table>\n")
+                html.append("  <tr><td colspan=\"17\" class=\"title-row\"><b>LAPORAN PERBAIKAN PERANGKAT TIM IT SUPPORT</b></td></tr>\n")
+                html.append("  <tr><td colspan=\"17\" class=\"sec-decl\">SISTEM PROTEKSI SECURE RECORD VERIFIED VER.2.6 - READ-ONLY - DATA SIGNED</td></tr>\n")
+                html.append("  <tr>\n")
+                html.append("    <th>ID Perbaikan</th>\n")
+                html.append("    <th>No. Inventaris</th>\n")
+                html.append("    <th>Nama Perangkat</th>\n")
+                html.append("    <th>Lokasi Perangkat</th>\n")
+                html.append("    <th>Waktu Mulai</th>\n")
+                html.append("    <th>Waktu Selesai</th>\n")
+                html.append("    <th>Kendala</th>\n")
+                html.append("    <th>Penyebab</th>\n")
+                html.append("    <th>Tindak Lanjut</th>\n")
+                html.append("    <th>Status</th>\n")
+                html.append("    <th>Alasan Hold</th>\n")
+                html.append("    <th>Estimasi</th>\n")
+                html.append("    <th>Teknisi</th>\n")
+                html.append("    <th>Foto Sebelum</th>\n")
+                html.append("    <th>Foto Sesudah</th>\n")
+                html.append("    <th>Foto Bersama Unit</th>\n")
+                html.append("    <th>Kode Verifikasi Keaslian (SHA-Signature)</th>\n")
+                html.append("  </tr>\n")
+
                 val repairs = filteredRepairs.value
                 repairs.forEach { r ->
                     val endStr = r.endTime?.let { dateFormat.format(Date(it)) } ?: "Sedang Diproses/Hold"
                     val devName = assetMap[r.inventoryNumber]?.name ?: "Perangkat Tidak Dikenal"
                     val devLoc = assetMap[r.inventoryNumber]?.location ?: "Lokasi Tidak Tercatat"
-                    
-                    val beforePhoto = extractPhotoAndGetLabel(context, r.photoBefore, "sebelum_rep_${r.id}", r.id.toString(), photoFiles)
-                    val afterPhoto = extractPhotoAndGetLabel(context, r.photoAfter, "sesudah_rep_${r.id}", r.id.toString(), photoFiles)
-                    val userPhoto = extractPhotoAndGetLabel(context, r.photoUser, "handover_rep_${r.id}", r.id.toString(), photoFiles)
-                    
                     val verificationHash = generateTamperProofHash(
                         r.id.toString(), r.inventoryNumber, r.status, r.technician, r.startTime.toString()
                     )
 
-                    val row = String.format(
-                        "\"%d\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"\n",
-                        r.id,
-                        r.inventoryNumber.replace("\"", "\"\""),
-                        devName.replace("\"", "\"\""),
-                        devLoc.replace("\"", "\"\""),
-                        dateFormat.format(Date(r.startTime)),
-                        endStr,
-                        r.problem.replace("\"", "\"\""),
-                        r.cause.replace("\"", "\"\""),
-                        r.actionTaken.replace("\"", "\"\""),
-                        r.status.replace("\"", "\"\""),
-                        (r.holdReason ?: "").replace("\"", "\"\""),
-                        (r.holdEstimate ?: "").replace("\"", "\"\""),
-                        r.technician.replace("\"", "\"\""),
-                        beforePhoto.replace("\"", "\"\""),
-                        afterPhoto.replace("\"", "\"\""),
-                        userPhoto.replace("\"", "\"\""),
-                        verificationHash
-                    )
-                    csvContent.append(row)
+                    html.append("  <tr>\n")
+                    html.append("    <td>${r.id}</td>\n")
+                    html.append("    <td>${escapeHtml(r.inventoryNumber)}</td>\n")
+                    html.append("    <td>${escapeHtml(devName)}</td>\n")
+                    html.append("    <td>${escapeHtml(devLoc)}</td>\n")
+                    html.append("    <td>${dateFormat.format(Date(r.startTime))}</td>\n")
+                    html.append("    <td>${escapeHtml(endStr)}</td>\n")
+                    html.append("    <td>${escapeHtml(r.problem)}</td>\n")
+                    html.append("    <td>${escapeHtml(r.cause)}</td>\n")
+                    html.append("    <td>${escapeHtml(r.actionTaken)}</td>\n")
+                    html.append("    <td><b>${escapeHtml(r.status)}</b></td>\n")
+                    html.append("    <td>${escapeHtml(r.holdReason ?: "")}</td>\n")
+                    html.append("    <td>${escapeHtml(r.holdEstimate ?: "")}</td>\n")
+                    html.append("    <td>${escapeHtml(r.technician)}</td>\n")
+                    html.append("    <td>${getEmbeddedPhotoHtml(r.photoBefore)}</td>\n")
+                    html.append("    <td>${getEmbeddedPhotoHtml(r.photoAfter)}</td>\n")
+                    html.append("    <td>${getEmbeddedPhotoHtml(r.photoUser)}</td>\n")
+                    html.append("    <td style=\"font-family: monospace;\">$verificationHash</td>\n")
+                    html.append("  </tr>\n")
                 }
+                html.append("</table>\n")
             }
             "maintenances" -> {
-                filename = "Laporan_Perawatan_IT_$timestamp.csv"
-                csvHeader.append("ID Perawatan;No. Inventaris;Nama Perangkat;Lokasi Perangkat;Waktu Mulai;Waktu Selesai;Tindakan;Kendala Temuan;Hasil;Status;Teknisi;Foto Sebelum;Foto Sesudah;Foto Bersama Unit;Kode Verifikasi Keaslian (SHA-Signature)\n")
+                filename = "Laporan_Perawatan_IT_$timestamp.xls"
+                html.append("<table>\n")
+                html.append("  <tr><td colspan=\"15\" class=\"title-row\"><b>LAPORAN PERAWATAN RUTIN TIM IT SUPPORT</b></td></tr>\n")
+                html.append("  <tr><td colspan=\"15\" class=\"sec-decl\">SISTEM PROTEKSI SECURE RECORD VERIFIED VER.2.6 - READ-ONLY - DATA SIGNED</td></tr>\n")
+                html.append("  <tr>\n")
+                html.append("    <th>ID Perawatan</th>\n")
+                html.append("    <th>No. Inventaris</th>\n")
+                html.append("    <th>Nama Perangkat</th>\n")
+                html.append("    <th>Lokasi Perangkat</th>\n")
+                html.append("    <th>Waktu Mulai</th>\n")
+                html.append("    <th>Waktu Selesai</th>\n")
+                html.append("    <th>Tindakan</th>\n")
+                html.append("    <th>Kendala Temuan</th>\n")
+                html.append("    <th>Hasil</th>\n")
+                html.append("    <th>Status</th>\n")
+                html.append("    <th>Teknisi</th>\n")
+                html.append("    <th>Foto Sebelum</th>\n")
+                html.append("    <th>Foto Sesudah</th>\n")
+                html.append("    <th>Foto Bersama Unit</th>\n")
+                html.append("    <th>Kode Verifikasi Keaslian (SHA-Signature)</th>\n")
+                html.append("  </tr>\n")
+
                 val maints = filteredMaintenances.value
                 maints.forEach { m ->
                     val endStr = m.endTime?.let { dateFormat.format(Date(it)) } ?: "Sedang Diproses"
                     val devName = assetMap[m.inventoryNumber]?.name ?: "Perangkat Tidak Dikenal"
                     val devLoc = assetMap[m.inventoryNumber]?.location ?: "Lokasi Tidak Tercatat"
-                    
-                    val beforePhoto = extractPhotoAndGetLabel(context, m.photoBefore, "sebelum_maint_${m.id}", m.id.toString(), photoFiles)
-                    val afterPhoto = extractPhotoAndGetLabel(context, m.photoAfter, "sesudah_maint_${m.id}", m.id.toString(), photoFiles)
-                    val userPhoto = extractPhotoAndGetLabel(context, m.photoUser, "handover_maint_${m.id}", m.id.toString(), photoFiles)
-
                     val verificationHash = generateTamperProofHash(
                         m.id.toString(), m.inventoryNumber, m.status, m.technician, m.startTime.toString()
                     )
 
-                    val row = String.format(
-                        "\"%d\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"\n",
-                        m.id,
-                        m.inventoryNumber.replace("\"", "\"\""),
-                        devName.replace("\"", "\"\""),
-                        devLoc.replace("\"", "\"\""),
-                        dateFormat.format(Date(m.startTime)),
-                        endStr,
-                        m.actionTaken.replace("\"", "\"\""),
-                        m.issuesFound.replace("\"", "\"\""),
-                        m.result.replace("\"", "\"\""),
-                        m.status.replace("\"", "\"\""),
-                        m.technician.replace("\"", "\"\""),
-                        beforePhoto.replace("\"", "\"\""),
-                        afterPhoto.replace("\"", "\"\""),
-                        userPhoto.replace("\"", "\"\""),
-                        verificationHash
-                    )
-                    csvContent.append(row)
+                    html.append("  <tr>\n")
+                    html.append("    <td>${m.id}</td>\n")
+                    html.append("    <td>${escapeHtml(m.inventoryNumber)}</td>\n")
+                    html.append("    <td>${escapeHtml(devName)}</td>\n")
+                    html.append("    <td>${escapeHtml(devLoc)}</td>\n")
+                    html.append("    <td>${dateFormat.format(Date(m.startTime))}</td>\n")
+                    html.append("    <td>${escapeHtml(endStr)}</td>\n")
+                    html.append("    <td>${escapeHtml(m.actionTaken)}</td>\n")
+                    html.append("    <td>${escapeHtml(m.issuesFound)}</td>\n")
+                    html.append("    <td>${escapeHtml(m.result)}</td>\n")
+                    html.append("    <td><b>${escapeHtml(m.status)}</b></td>\n")
+                    html.append("    <td>${escapeHtml(m.technician)}</td>\n")
+                    html.append("    <td>${getEmbeddedPhotoHtml(m.photoBefore)}</td>\n")
+                    html.append("    <td>${getEmbeddedPhotoHtml(m.photoAfter)}</td>\n")
+                    html.append("    <td>${getEmbeddedPhotoHtml(m.photoUser)}</td>\n")
+                    html.append("    <td style=\"font-family: monospace;\">$verificationHash</td>\n")
+                    html.append("  </tr>\n")
                 }
+                html.append("</table>\n")
             }
             else -> return null
         }
 
-        // Add verification footer
-        csvContent.append("# ==========================================================================================\n")
-        csvContent.append("# TIM IT INFRASTRUKTUR & DESKTOP SUPPORT HUB - SECURE RECORD VERIFIED VER.2.6\n")
-        csvContent.append("# DILARANG KERAS MEMALSUKAN ATAU MENGUBAH REPORT TANPA ACC TIM IT HUB.\n")
-        csvContent.append("# ==========================================================================================\n")
+        html.append("</body>\n")
+        html.append("</html>\n")
 
         try {
-            // Write to local cache / external files dir
-            val tempCsvFile = File(context.cacheDir, filename)
-            tempCsvFile.writeText(csvHeader.toString() + csvContent.toString(), Charsets.UTF_8)
-            
-            if (photoFiles.isNotEmpty()) {
-                val zipFilename = filename.replace(".csv", "_Dengan_Foto.zip")
-                val zipFile = createZipFile(context, tempCsvFile, photoFiles, zipFilename)
-                if (zipFile != null) return zipFile
-            }
-            
-            return tempCsvFile
+            val tempFile = File(context.cacheDir, filename)
+            tempFile.writeText(html.toString(), Charsets.UTF_8)
+            return tempFile
         } catch (e: Exception) {
             e.printStackTrace()
             return null
@@ -516,14 +562,23 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 "${context.packageName}.provider",
                 file
             )
+            val isXls = file.name.endsWith(".xls")
             val isZip = file.name.endsWith(".zip")
             val intent = Intent(Intent.ACTION_SEND).apply {
-                type = if (isZip) "application/zip" else "text/comma-separated-values"
+                type = when {
+                    isXls -> "application/vnd.ms-excel"
+                    isZip -> "application/zip"
+                    else -> "text/comma-separated-values"
+                }
                 putExtra(Intent.EXTRA_STREAM, uri)
                 putExtra(Intent.EXTRA_SUBJECT, file.name)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            val titleText = if (isZip) "Ekspor Laporan Lengkap + Foto (Arsip ZIP)" else "Ekspor Data Ke Excel (CSV) [READ-ONLY PROTECTED]"
+            val titleText = when {
+                isXls -> "Ekspor Laporan Excel Lengkap + Foto Bukti"
+                isZip -> "Ekspor Laporan Lengkap + Foto (Arsip ZIP)"
+                else -> "Ekspor Data Ke Excel (CSV) [READ-ONLY PROTECTED]"
+            }
             context.startActivity(Intent.createChooser(intent, titleText))
         } catch (e: Exception) {
             e.printStackTrace()
