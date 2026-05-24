@@ -225,6 +225,43 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
 
     fun getRepairsForAsset(invNum: String): Flow<List<Repair>> = repository.getRepairsForAsset(invNum)
     fun getMaintenancesForAsset(invNum: String): Flow<List<Maintenance>> = repository.getMaintenancesForAsset(invNum)
+    fun getUpdateLogsForAsset(invNum: String): Flow<List<com.example.data.model.AssetUpdateLog>> = repository.getUpdateLogsForAsset(invNum)
+
+    fun saveAssetUpdate(
+        asset: Asset,
+        newLocation: String,
+        newStatus: String,
+        newDescription: String?,
+        reasonForPermanentDamage: String?,
+        onComplete: () -> Unit
+    ) {
+        viewModelScope.launch {
+            val log = com.example.data.model.AssetUpdateLog(
+                inventoryNumber = asset.inventoryNumber,
+                updateTime = System.currentTimeMillis(),
+                oldLocation = asset.location,
+                newLocation = newLocation,
+                oldStatus = asset.status,
+                newStatus = newStatus,
+                oldDescription = asset.description,
+                newDescription = newDescription,
+                reasonForPermanentDamage = reasonForPermanentDamage
+            )
+            repository.insertAssetUpdateLog(log)
+
+            val updatedAsset = asset.copy(
+                location = newLocation,
+                status = newStatus,
+                description = newDescription
+            )
+            repository.updateAsset(updatedAsset)
+
+            if (selectedAsset.value?.inventoryNumber == asset.inventoryNumber) {
+                selectedAsset.value = updatedAsset
+            }
+            onComplete()
+        }
+    }
 
     // --- Tamper-proof hash generator for Excel (CSV) row integrity verification ---
     private fun generateTamperProofHash(vararg inputs: String): String {

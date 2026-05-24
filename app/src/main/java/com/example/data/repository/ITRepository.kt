@@ -5,6 +5,7 @@ import com.example.data.database.InventoryDao
 import com.example.data.model.Asset
 import com.example.data.model.Repair
 import com.example.data.model.Maintenance
+import com.example.data.model.AssetUpdateLog
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -325,5 +326,63 @@ class ITRepository(private val dao: InventoryDao) {
 
     suspend fun updateMaintenance(maintenance: Maintenance) {
         insertMaintenance(maintenance)
+    }
+
+    // --- Asset Update Log Operations ---
+    fun getUpdateLogsForAsset(invNum: String): Flow<List<AssetUpdateLog>> {
+        return if (isFirebaseEnabled) {
+            callbackFlow {
+                val listener = firestore?.collection("asset_updates")
+                    ?.whereEqualTo("inventoryNumber", invNum)
+                    ?.addSnapshotListener { snapshot, error ->
+                        if (error != null) return@addSnapshotListener
+                        if (snapshot != null) {
+                            val list = snapshot.documents.mapNotNull { doc ->
+                                try {
+                                    AssetUpdateLog(
+                                        id = doc.getLong("id")?.toInt() ?: doc.id.hashCode(),
+                                        inventoryNumber = doc.getString("inventoryNumber") ?: "",
+                                        updateTime = doc.getLong("updateTime") ?: 0L,
+                                        oldLocation = doc.getString("oldLocation") ?: "",
+                                        newLocation = doc.getString("newLocation") ?: "",
+                                        oldStatus = doc.getString("oldStatus") ?: "",
+                                        newStatus = doc.getString("newStatus") ?: "",
+                                        oldDescription = doc.getString("oldDescription"),
+                                        newDescription = doc.getString("newDescription"),
+                                        reasonForPermanentDamage = doc.getString("reasonForPermanentDamage")
+                                    )
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }.sortedByDescending { it.updateTime }
+                            trySend(list)
+                        }
+                    }
+                awaitClose { listener?.remove() }
+            }
+        } else {
+            dao.getUpdateLogsForAsset(invNum)
+        }
+    }
+
+    suspend fun insertAssetUpdateLog(log: AssetUpdateLog) {
+        if (isFirebaseEnabled && firestore != null) {
+            val finalId = if (log.id == 0) (System.currentTimeMillis() % 10000000).toInt() else log.id
+            val data = hashMapOf(
+                "id" to finalId.toLong(),
+                "inventoryNumber" to log.inventoryNumber,
+                "updateTime" to log.updateTime,
+                "oldLocation" to log.oldLocation,
+                "newLocation" to log.newLocation,
+                "oldStatus" to log.oldStatus,
+                "newStatus" to log.newStatus,
+                "oldDescription" to log.oldDescription,
+                "newDescription" to log.newDescription,
+                "reasonForPermanentDamage" to log.reasonForPermanentDamage
+            )
+            firestore!!.collection("asset_updates").document(finalId.toString()).set(data)
+        } else {
+            dao.insertAssetUpdateLog(log)
+        }
     }
 }

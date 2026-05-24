@@ -11,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -272,7 +276,31 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var showingRepairDetail by remember { mutableStateOf<Repair?>(null) }
     var showingMaintenanceDetail by remember { mutableStateOf<Maintenance?>(null) }
     var showingBarcodeScanner by remember { mutableStateOf<((String) -> Unit)?>(null) } // callback function
-    var showingCameraSimulation by remember { mutableStateOf<((String) -> Unit)?>(null) } // callback function
+    var prefilledInventoryNumber by remember { mutableStateOf<String?>(null) }
+    var showingUpdateAssetDialog by remember { mutableStateOf<Asset?>(null) }
+    
+    var currentCameraCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
+    val systemCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            val currentDateStr = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()).format(Date())
+            val compressedBase64 = compressAndWatermarkBitmap(
+                bitmap = bitmap,
+                location = "Kamera Perangkat IT Support",
+                dateStr = currentDateStr
+            )
+            currentCameraCallback?.invoke(compressedBase64)
+        }
+        currentCameraCallback = null
+    }
+
+    val systemCameraOpener: ((String) -> Unit) -> Unit = remember {
+        { callback ->
+            currentCameraCallback = callback
+            systemCameraLauncher.launch()
+        }
+    }
 
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
@@ -424,12 +452,17 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 onSave = { repair ->
                                     viewModel.saveRepair(repair) {
                                         currentSubScreen = SubScreen.List
+                                        prefilledInventoryNumber = null
                                         Toast.makeText(context, "Perbaikan berhasil didaftarkan!", Toast.LENGTH_SHORT).show()
                                     }
                                 },
-                                onCancel = { currentSubScreen = SubScreen.List },
+                                onCancel = { 
+                                    currentSubScreen = SubScreen.List
+                                    prefilledInventoryNumber = null
+                                },
                                 onOpenScanner = { callback -> showingBarcodeScanner = callback },
-                                onOpenCamera = { callback -> showingCameraSimulation = callback }
+                                onOpenCamera = systemCameraOpener,
+                                initialInventoryNumber = prefilledInventoryNumber
                             )
                         }
                         else -> {}
@@ -462,12 +495,17 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 onSave = { maint ->
                                     viewModel.saveMaintenance(maint) {
                                         currentSubScreen = SubScreen.List
+                                        prefilledInventoryNumber = null
                                         Toast.makeText(context, "Pencatatan perawatan rutin disimpan!", Toast.LENGTH_SHORT).show()
                                     }
                                 },
-                                onCancel = { currentSubScreen = SubScreen.List },
+                                onCancel = { 
+                                    currentSubScreen = SubScreen.List
+                                    prefilledInventoryNumber = null
+                                },
                                 onOpenScanner = { callback -> showingBarcodeScanner = callback },
-                                onOpenCamera = { callback -> showingCameraSimulation = callback }
+                                onOpenCamera = systemCameraOpener,
+                                initialInventoryNumber = prefilledInventoryNumber
                             )
                         }
                         else -> {}
@@ -481,21 +519,42 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     showingAssetDetail?.let { asset ->
         val assetRepairsState = viewModel.getRepairsForAsset(asset.inventoryNumber).collectAsStateWithLifecycle(emptyList())
         val assetMaintsState = viewModel.getMaintenancesForAsset(asset.inventoryNumber).collectAsStateWithLifecycle(emptyList())
+        val assetUpdatesState = viewModel.getUpdateLogsForAsset(asset.inventoryNumber).collectAsStateWithLifecycle(emptyList())
 
         AssetDetailDialog(
             asset = asset,
             repairs = assetRepairsState.value,
             maintenances = assetMaintsState.value,
+            updates = assetUpdatesState.value,
             onDismiss = { showingAssetDetail = null },
             onAddRepairDirectly = {
+                prefilledInventoryNumber = asset.inventoryNumber
                 showingAssetDetail = null
                 currentTab = AppTab.Perbaikan
                 currentSubScreen = SubScreen.AddRepair
             },
             onAddMaintDirectly = {
+                prefilledInventoryNumber = asset.inventoryNumber
                 showingAssetDetail = null
                 currentTab = AppTab.Perawatan
                 currentSubScreen = SubScreen.AddMaintenance
+            },
+            onUpdateAssetDirectly = {
+                showingUpdateAssetDialog = asset
+                showingAssetDetail = null
+            }
+        )
+    }
+
+    showingUpdateAssetDialog?.let { asset ->
+        AssetUpdateDialog(
+            asset = asset,
+            onDismiss = { showingUpdateAssetDialog = null },
+            onSave = { loc, status, desc, reason ->
+                viewModel.saveAssetUpdate(asset, loc, status, desc, reason) {
+                    showingUpdateAssetDialog = null
+                    Toast.makeText(context, "Detail dan status aset berhasil di-update!", Toast.LENGTH_SHORT).show()
+                }
             }
         )
     }
@@ -510,7 +569,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     Toast.makeText(context, "Status perbaikan berhasil diganti ke Selesai!", Toast.LENGTH_SHORT).show()
                 }
             },
-            onOpenCamera = { callback -> showingCameraSimulation = callback }
+            onOpenCamera = systemCameraOpener
         )
     }
 
@@ -524,7 +583,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     Toast.makeText(context, "Perawatan rutin telah diselesaikan!", Toast.LENGTH_SHORT).show()
                 }
             },
-            onOpenCamera = { callback -> showingCameraSimulation = callback }
+            onOpenCamera = systemCameraOpener
         )
     }
 
@@ -537,17 +596,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 showingBarcodeScanner = null
             },
             onDismiss = { showingBarcodeScanner = null }
-        )
-    }
-
-    // Photo Capture Simulator Modal
-    showingCameraSimulation?.let { callback ->
-        CameraSimulationDialog(
-            onPhotoCaptured = { photoUrl ->
-                callback(photoUrl)
-                showingCameraSimulation = null
-            },
-            onDismiss = { showingCameraSimulation = null }
         )
     }
 }
@@ -907,6 +955,9 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAssetForm(onSave: (Asset) -> Unit, onCancel: () -> Unit, assetList: List<Asset>) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     var invNum by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("Laptop") }
@@ -1044,7 +1095,11 @@ fun AddAssetForm(onSave: (Asset) -> Unit, onCancel: () -> Unit, assetList: List<
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             OutlinedButton(
-                onClick = onCancel,
+                onClick = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus(force = true)
+                    onCancel()
+                },
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .weight(1f)
@@ -1059,6 +1114,8 @@ fun AddAssetForm(onSave: (Asset) -> Unit, onCancel: () -> Unit, assetList: List<
 
             Button(
                 onClick = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus(force = true)
                     onSave(Asset(invNum, name, type, location, "Aktif", description))
                 },
                 shape = RoundedCornerShape(12.dp),
@@ -1080,9 +1137,11 @@ fun AssetDetailDialog(
     asset: Asset,
     repairs: List<Repair>,
     maintenances: List<Maintenance>,
+    updates: List<com.example.data.model.AssetUpdateLog>,
     onDismiss: () -> Unit,
     onAddRepairDirectly: () -> Unit,
-    onAddMaintDirectly: () -> Unit
+    onAddMaintDirectly: () -> Unit,
+    onUpdateAssetDirectly: () -> Unit
 ) {
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
 
@@ -1149,27 +1208,40 @@ fun AssetDetailDialog(
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Button(
                                 onClick = onAddRepairDirectly,
                                 shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                                modifier = Modifier.weight(1.5f)
+                                modifier = Modifier.weight(1.1f),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                             ) {
-                                Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Lapor Rusak", fontSize = 11.sp, maxLines = 1)
+                                Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(13.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Catat Perbaikan", fontSize = 10.sp, maxLines = 1)
                             }
                             Button(
                                 onClick = onAddMaintDirectly,
                                 shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0277BD)),
-                                modifier = Modifier.weight(1.5f)
+                                modifier = Modifier.weight(1.1f),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                             ) {
-                                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Rawat Rutin", fontSize = 11.sp, maxLines = 1)
+                                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(13.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Rawat Rutin", fontSize = 10.sp, maxLines = 1)
+                            }
+                            Button(
+                                onClick = onUpdateAssetDirectly,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                modifier = Modifier.weight(1.1f),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Update Aset", fontSize = 10.sp, maxLines = 1)
                             }
                         }
                     }
@@ -1184,7 +1256,64 @@ fun AssetDetailDialog(
                         )
                     }
 
-                    if (repairs.isEmpty() && maintenances.isEmpty()) {
+                    // Loop Update Logs First if any exists
+                    if (updates.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Riwayat Update Detail & Status (${updates.size})",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                        items(updates) { u ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            "Update Informasi",
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            fontSize = 11.sp
+                                        )
+                                        Text(
+                                            dateFormatter.format(Date(u.updateTime)),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    if (u.oldLocation != u.newLocation) {
+                                        Text("Lokasi: ${u.oldLocation} ➔ ${u.newLocation}", fontSize = 11.sp)
+                                    } else {
+                                        Text("Lokasi: ${u.newLocation}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    
+                                    if (u.oldStatus != u.newStatus) {
+                                        Text("Status: ${u.oldStatus} ➔ ${u.newStatus}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    } else {
+                                        Text("Status: ${u.newStatus}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+
+                                    if (!u.reasonForPermanentDamage.isNullOrBlank()) {
+                                        Text("Sebab Rusak Permanen: ${u.reasonForPermanentDamage}", fontSize = 11.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
+                                    }
+
+                                    if (u.oldDescription != u.newDescription) {
+                                        Text("Spesifikasi: ${u.oldDescription ?: "-"} ➔ ${u.newDescription ?: "-"}", fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (repairs.isEmpty() && maintenances.isEmpty() && updates.isEmpty()) {
                         item {
                             Text(
                                 "Belum terdapat riwayat perbaikan maupun perawatan rutin.",
@@ -1281,6 +1410,157 @@ fun AssetDetailDialog(
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AssetUpdateDialog(
+    asset: Asset,
+    onDismiss: () -> Unit,
+    onSave: (newLocation: String, newStatus: String, newDescription: String?, reasonForPermanentDamage: String?) -> Unit
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    var location by remember { mutableStateOf(asset.location) }
+    var status by remember { mutableStateOf(asset.status) }
+    var description by remember { mutableStateOf(asset.description ?: "") }
+    var reasonForPermanentDamage by remember { mutableStateOf("") }
+
+    val statusOptions = listOf("Aktif", "Hold", "Dalam Pengerjaan", "Rusak Permanen")
+    var statusExpanded by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = {
+        keyboardController?.hide()
+        focusManager.clearFocus(force = true)
+        onDismiss()
+    }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    "Update Informasi & Status Aset",
+                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "No. Inventaris: ${asset.inventoryNumber}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text("Lokasi Perangkat") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Status Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = statusExpanded,
+                    onExpandedChange = { statusExpanded = !statusExpanded }
+                ) {
+                    OutlinedTextField(
+                        readOnly = true,
+                        value = status,
+                        onValueChange = {},
+                        label = { Text("Status Perangkat") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded) },
+                        colors = OutlinedTextFieldDefaults.colors(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = statusExpanded,
+                        onDismissRequest = { statusExpanded = false }
+                    ) {
+                        statusOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    status = option
+                                    statusExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Conditional Reason Field if "Rusak Permanen" is selected
+                if (status == "Rusak Permanen") {
+                    OutlinedTextField(
+                        value = reasonForPermanentDamage,
+                        onValueChange = { reasonForPermanentDamage = it },
+                        label = { Text("Penyebab Kerusakan Permanen *Wajib") },
+                        isError = reasonForPermanentDamage.isBlank(),
+                        singleLine = false,
+                        maxLines = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Spesifikasi & Catatan Tambahan") },
+                    singleLine = false,
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            keyboardController?.hide()
+                            focusManager.clearFocus(force = true)
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Batal")
+                    }
+
+                    val canSave = status != "Rusak Permanen" || reasonForPermanentDamage.isNotBlank()
+                    Button(
+                        onClick = {
+                            keyboardController?.hide()
+                            focusManager.clearFocus(force = true)
+                            onSave(
+                                location,
+                                status,
+                                description.ifBlank { null },
+                                if (status == "Rusak Permanen") reasonForPermanentDamage else null
+                            )
+                        },
+                        enabled = canSave,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Simpan")
                     }
                 }
             }
@@ -1580,9 +1860,13 @@ fun AddRepairForm(
     onSave: (Repair) -> Unit,
     onCancel: () -> Unit,
     onOpenScanner: ((String) -> Unit) -> Unit,
-    onOpenCamera: ((String) -> Unit) -> Unit
+    onOpenCamera: ((String) -> Unit) -> Unit,
+    initialInventoryNumber: String? = null
 ) {
-    var invNum by remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    var invNum by remember { mutableStateOf(initialInventoryNumber ?: "") }
     var problem by remember { mutableStateOf("") }
     var cause by remember { mutableStateOf("") }
     var actionTaken by remember { mutableStateOf("") }
@@ -1930,7 +2214,11 @@ fun AddRepairForm(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedButton(
-                    onClick = onCancel,
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
+                        onCancel()
+                    },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .weight(1f)
@@ -1942,6 +2230,8 @@ fun AddRepairForm(
 
                 Button(
                     onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
                         val repair = Repair(
                             inventoryNumber = invNum,
                             startTime = System.currentTimeMillis() - 2 * 3600 * 1000, // started 2 hours ago
@@ -1981,6 +2271,9 @@ fun RepairDetailDialog(
     onResumeRepair: (Repair) -> Unit,
     onOpenCamera: ((String) -> Unit) -> Unit
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val isUnfinished = repair.status == "Hold" || repair.status == "Dalam Pengerjaan"
 
@@ -1992,7 +2285,11 @@ fun RepairDetailDialog(
 
     val currentDateStr = remember { SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date()) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = {
+        keyboardController?.hide()
+        focusManager.clearFocus(force = true)
+        onDismiss()
+    }) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2012,7 +2309,11 @@ fun RepairDetailDialog(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
+                        onDismiss()
+                    }) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
@@ -2221,6 +2522,8 @@ fun RepairDetailDialog(
 
                                     Button(
                                         onClick = {
+                                            keyboardController?.hide()
+                                            focusManager.clearFocus(force = true)
                                             val updatedRepair = repair.copy(
                                                 status = "Selesai",
                                                 endTime = System.currentTimeMillis(),
@@ -2502,9 +2805,13 @@ fun AddMaintenanceForm(
     onSave: (Maintenance) -> Unit,
     onCancel: () -> Unit,
     onOpenScanner: ((String) -> Unit) -> Unit,
-    onOpenCamera: ((String) -> Unit) -> Unit
+    onOpenCamera: ((String) -> Unit) -> Unit,
+    initialInventoryNumber: String? = null
 ) {
-    var invNum by remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    var invNum by remember { mutableStateOf(initialInventoryNumber ?: "") }
     var actionTaken by remember { mutableStateOf("") }
     var issuesFound by remember { mutableStateOf("") }
     var result by remember { mutableStateOf("Kondisi Prima & Normal") }
@@ -2819,7 +3126,11 @@ fun AddMaintenanceForm(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedButton(
-                    onClick = onCancel,
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
+                        onCancel()
+                    },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .weight(1f)
@@ -2831,6 +3142,8 @@ fun AddMaintenanceForm(
 
                 Button(
                     onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
                         val maint = Maintenance(
                             inventoryNumber = invNum,
                             startTime = System.currentTimeMillis() - 3600 * 1000,
@@ -2867,6 +3180,9 @@ fun MaintenanceDetailDialog(
     onUpdateMaintenance: (Maintenance) -> Unit,
     onOpenCamera: ((String) -> Unit) -> Unit
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
     val isUnfinished = maintenance.status == "Dalam Pengerjaan"
 
@@ -2879,7 +3195,11 @@ fun MaintenanceDetailDialog(
 
     val currentDateStr = remember { SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date()) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = {
+        keyboardController?.hide()
+        focusManager.clearFocus(force = true)
+        onDismiss()
+    }) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2899,7 +3219,11 @@ fun MaintenanceDetailDialog(
                         style = MaterialTheme.typography.titleMedium,
                         color = Color(0xFF0277BD)
                     )
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
+                        onDismiss()
+                    }) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
@@ -3096,6 +3420,8 @@ fun MaintenanceDetailDialog(
 
                                     Button(
                                         onClick = {
+                                            keyboardController?.hide()
+                                            focusManager.clearFocus(force = true)
                                             val updatedMaint = maintenance.copy(
                                                 status = "Selesai",
                                                 endTime = System.currentTimeMillis(),
@@ -3183,9 +3509,45 @@ fun BarcodeScannerDialog(
     onAssetSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var textInput by remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
-    Dialog(onDismissRequest = onDismiss) {
+    val context = LocalContext.current
+    var textInput by remember { mutableStateOf("") }
+    var scanError by remember { mutableStateOf<String?>(null) }
+
+    val qrScanner = remember {
+        val options = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS)
+            .build()
+        com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(context, options)
+    }
+
+    val launchScanner = {
+        qrScanner.startScan()
+            .addOnSuccessListener { barcode ->
+                val result = barcode.rawValue
+                if (!result.isNullOrBlank()) {
+                    keyboardController?.hide()
+                    focusManager.clearFocus(force = true)
+                    onAssetSelected(result)
+                }
+            }
+            .addOnFailureListener { e ->
+                scanError = "Pindai gagal atau dibatalkan."
+            }
+    }
+
+    // Proactively launch scanner when dialog first opens
+    LaunchedEffect(Unit) {
+        launchScanner()
+    }
+
+    Dialog(onDismissRequest = {
+        keyboardController?.hide()
+        focusManager.clearFocus(force = true)
+        onDismiss()
+    }) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -3198,7 +3560,7 @@ fun BarcodeScannerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Simulasi Pemindai Barcode (IT)",
+                    "Pemindai Barcode & QR Code",
                     fontWeight = FontWeight.ExtraBold,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
@@ -3206,7 +3568,7 @@ fun BarcodeScannerDialog(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Menstimulasi kamera perangkat pembaca kode inventaris / QR.",
+                    "Menggunakan kamera internal Google Play Services untuk membaca kode UTF-8.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -3218,13 +3580,13 @@ fun BarcodeScannerDialog(
                 Box(
                     modifier = Modifier
                         .size(170.dp)
+                        .clickable { launchScanner() }
                         .background(Color.Black.copy(alpha = 0.9f), RoundedCornerShape(16.dp))
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     // Dotted corners & animated lasers
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        val pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 10f), 0f)
                         drawRoundRect(
                             color = Color.Green,
                             size = size,
@@ -3242,14 +3604,14 @@ fun BarcodeScannerDialog(
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            imageVector = Icons.Default.QrCode,
+                            imageVector = Icons.Default.QrCodeScanner,
                             contentDescription = null,
                             tint = Color.White.copy(0.8f),
                             modifier = Modifier.size(54.dp)
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "SCANNING...",
+                            "KETUK UNTUK PINDAI",
                             color = Color.Green,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 11.sp
@@ -3257,7 +3619,26 @@ fun BarcodeScannerDialog(
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                if (scanError != null) {
+                    Text(
+                        scanError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                Button(
+                    onClick = { launchScanner() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Buka Kamera Scan QR", fontSize = 13.sp)
+                }
 
                 // Asset selection from registered DB to "simulate a successful scan"
                 Text(
@@ -3284,14 +3665,18 @@ fun BarcodeScannerDialog(
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(0.4f),
                                 RoundedCornerShape(8.dp)
-                            )
+                             )
                             .padding(4.dp)
                     ) {
                         items(assetList) { asset ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onAssetSelected(asset.inventoryNumber) }
+                                    .clickable {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus(force = true)
+                                        onAssetSelected(asset.inventoryNumber)
+                                    }
                                     .padding(8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
@@ -3318,7 +3703,11 @@ fun BarcodeScannerDialog(
                         .testTag("scanner_tf_manual"),
                     trailingIcon = {
                         if (textInput.isNotBlank()) {
-                            IconButton(onClick = { onAssetSelected(textInput) }) {
+                            IconButton(onClick = {
+                                keyboardController?.hide()
+                                focusManager.clearFocus(force = true)
+                                onAssetSelected(textInput)
+                            }) {
                                 Icon(Icons.Default.Check, contentDescription = "Simpan", tint = Color.Green)
                             }
                         }
@@ -3332,7 +3721,11 @@ fun BarcodeScannerDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
-                        onClick = onDismiss,
+                        onClick = {
+                            keyboardController?.hide()
+                            focusManager.clearFocus(force = true)
+                            onDismiss()
+                        },
                         modifier = Modifier
                             .weight(1f)
                     ) {

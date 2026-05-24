@@ -4,6 +4,7 @@ import androidx.room.*
 import com.example.data.model.Asset
 import com.example.data.model.Repair
 import com.example.data.model.Maintenance
+import com.example.data.model.AssetUpdateLog
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -58,4 +59,11 @@ interface InventoryDao {
 
     @Update
     suspend fun updateMaintenance(maintenance: Maintenance)
+
+    // --- Asset Update Log Queries ---
+    @Query("SELECT * FROM asset_updates WHERE inventoryNumber = :invNum ORDER BY updateTime DESC")
+    fun getUpdateLogsForAsset(invNum: String): Flow<List<AssetUpdateLog>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAssetUpdateLog(log: AssetUpdateLog)
 }
