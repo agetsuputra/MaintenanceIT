@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Background card with high-quality squircle rounded square -->
+    <path
+        android:fillColor="#1E3A8A"
+        android:pathData="M 120 40 L 392 40 C 458 40, 472 54, 472 120 L 472 392 C 472 458, 458 472, 392 472 L 120 472 C 54 472, 40 458, 40 392 L 40 120 C 40 54, 54 40, 120 40 Z" />
+
+    <!-- A beautiful, dynamic accent light-blue circle for depth and visual balance -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M 256 100 C 342 100, 412 170, 412 256 C 412 342, 342 412, 256 412 C 170 412, 100 342, 100 256 C 100 170, 170 100, 256 100 Z" />
+
+    <!-- Sleek, clear, perfectly proportioned white wrench rotated beautifully at 45 degrees -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 374 332 L 332 374 C 322 384, 306 384, 296 374 L 178 256 C 170 262, 160 266, 149 266 C 117 266, 91 240, 91 208 C 91 190, 99 174, 112 163 L 157 208 L 208 157 L 163 112 C 174 99, 190 91, 208 91 C 240 91, 266 117, 266 149 C 266 160, 262 170, 256 178 L 374 296 C 384 306, 384 322, 374 332 Z" />
+
+</vector>

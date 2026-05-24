@@ -11,7 +11,9 @@ data class Asset(
     val location: String,
     val status: String, // e.g. "Aktif", "Rusak", "Hold", "Dalam Pengerjaan"
     val description: String?,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val acquisitionDate: Long = System.currentTimeMillis(),
+    val purchasePrice: Double? = null
 )
 
 @Entity(tableName = "repairs")

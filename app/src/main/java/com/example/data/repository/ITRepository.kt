@@ -58,7 +58,9 @@ class ITRepository(private val dao: InventoryDao) {
                                     location = doc.getString("location") ?: "",
                                     status = doc.getString("status") ?: "",
                                     description = doc.getString("description"),
-                                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
+                                    acquisitionDate = doc.getLong("acquisitionDate") ?: (doc.getLong("createdAt") ?: System.currentTimeMillis()),
+                                    purchasePrice = doc.getDouble("purchasePrice")
                                 )
                             } catch (e: Exception) {
                                 null
@@ -167,7 +169,9 @@ class ITRepository(private val dao: InventoryDao) {
                         location = doc.getString("location") ?: "",
                         status = doc.getString("status") ?: "",
                         description = doc.getString("description"),
-                        createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                        createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
+                        acquisitionDate = doc.getLong("acquisitionDate") ?: (doc.getLong("createdAt") ?: System.currentTimeMillis()),
+                        purchasePrice = doc.getDouble("purchasePrice")
                     )
                 } else null
             } catch (e: Exception) {
@@ -187,7 +191,9 @@ class ITRepository(private val dao: InventoryDao) {
                 "location" to asset.location,
                 "status" to asset.status,
                 "description" to asset.description,
-                "createdAt" to asset.createdAt
+                "createdAt" to asset.createdAt,
+                "acquisitionDate" to asset.acquisitionDate,
+                "purchasePrice" to asset.purchasePrice
             )
             firestore!!.collection("assets").document(asset.inventoryNumber).set(data)
         } else {

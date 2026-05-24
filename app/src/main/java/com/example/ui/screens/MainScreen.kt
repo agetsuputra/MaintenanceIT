@@ -51,6 +51,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import java.io.ByteArrayOutputStream
 import android.util.Base64
+import java.util.Calendar
 import com.example.data.model.Maintenance
 import com.example.data.model.Repair
 import com.example.ui.viewmodel.ITViewModel
@@ -365,10 +366,12 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Box(
                             modifier = Modifier
-                                .padding(end = 10.dp)
+                                .padding(top = 4.dp, bottom = 4.dp, start = 4.dp, end = 12.dp)
                                 .size(36.dp)
                                 .background(
                                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -379,7 +382,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             Image(
                                 painter = painterResource(id = R.drawable.app_logo),
                                 contentDescription = "Logo",
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                         Column {
@@ -1054,6 +1057,11 @@ fun AddAssetForm(
     var type by remember { mutableStateOf("Laptop") }
     var location by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    var acquisitionDateLong by remember { mutableStateOf(System.currentTimeMillis()) }
+    var purchasePriceInput by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val simpleDateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
     val categories = listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
     var categoryExpanded by remember { mutableStateOf(false) }
@@ -1181,6 +1189,76 @@ fun AddAssetForm(
             }
 
             item {
+                val calendar = Calendar.getInstance().apply { timeInMillis = acquisitionDateLong }
+                val startYear = calendar.get(Calendar.YEAR)
+                val startMonth = calendar.get(Calendar.MONTH)
+                val startDay = calendar.get(Calendar.DAY_OF_MONTH)
+
+                val datePickerDialog = DatePickerDialog(
+                    context,
+                    { _, selectedYear, selectedMonth, selectedDay ->
+                        val selectedCal = Calendar.getInstance().apply {
+                            set(Calendar.YEAR, selectedYear)
+                            set(Calendar.MONTH, selectedMonth)
+                            set(Calendar.DAY_OF_MONTH, selectedDay)
+                        }
+                        acquisitionDateLong = selectedCal.timeInMillis
+                    },
+                    startYear,
+                    startMonth,
+                    startDay
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { datePickerDialog.show() }
+                ) {
+                    OutlinedTextField(
+                        value = simpleDateFormat.format(java.util.Date(acquisitionDateLong)),
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Tanggal Pengadaan Aset *") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = "Pilih Tanggal Pengadaan",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("tf_asset_acquisition_date"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledLeadingIconColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
+            }
+
+            item {
+                OutlinedTextField(
+                    value = purchasePriceInput,
+                    onValueChange = { input ->
+                        if (input.all { it.isDigit() }) {
+                            purchasePriceInput = input
+                        }
+                    },
+                    label = { Text("Harga Beli (Rp) - Opsional") },
+                    placeholder = { Text("Contoh: 12500000") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("tf_asset_purchase_price")
+                )
+            }
+
+            item {
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
@@ -1223,7 +1301,18 @@ fun AddAssetForm(
                 onClick = {
                     keyboardController?.hide()
                     focusManager.clearFocus(force = true)
-                    onSave(Asset(invNum, name, type, location, "Aktif", description))
+                    val priceDouble = purchasePriceInput.toDoubleOrNull()
+                    onSave(Asset(
+                        inventoryNumber = invNum,
+                        name = name,
+                        type = type,
+                        location = location,
+                        status = "Aktif",
+                        description = description,
+                        createdAt = System.currentTimeMillis(),
+                        acquisitionDate = acquisitionDateLong,
+                        purchasePrice = priceDouble
+                    ))
                 },
                 shape = RoundedCornerShape(12.dp),
                 enabled = isValid,
@@ -1303,9 +1392,15 @@ fun AssetDetailDialog(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(Modifier.height(8.dp))
+                                val dateStr = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(java.util.Date(asset.acquisitionDate))
+                                val priceStr = asset.purchasePrice?.let {
+                                    "Rp " + String.format(Locale.getDefault(), "%,.0f", it).replace(',', '.')
+                                } ?: "-"
                                 RowValue("Kategori", asset.type)
                                 RowValue("Lokasi", asset.location)
                                 RowValue("Status", asset.status)
+                                RowValue("Tgl Pengadaan", dateStr)
+                                RowValue("Harga Beli", priceStr)
                                 RowValue("Spesifikasi", asset.description ?: "-")
                             }
                         }
