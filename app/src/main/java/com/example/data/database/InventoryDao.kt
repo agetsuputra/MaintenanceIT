@@ -5,6 +5,7 @@ import com.example.data.model.Asset
 import com.example.data.model.Repair
 import com.example.data.model.Maintenance
 import com.example.data.model.AssetUpdateLog
+import com.example.data.model.User
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -66,4 +67,20 @@ interface InventoryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAssetUpdateLog(log: AssetUpdateLog)
+
+    // --- User Queries ---
+    @Query("SELECT * FROM users ORDER BY username ASC")
+    fun getAllUsers(): Flow<List<User>>
+
+    @Query("SELECT * FROM users WHERE username = :uname LIMIT 1")
+    suspend fun getUserByUsername(uname: String): User?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUser(user: User)
+
+    @Update
+    suspend fun updateUser(user: User)
+
+    @Delete
+    suspend fun deleteUser(user: User)
 }

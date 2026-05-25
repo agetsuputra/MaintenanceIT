@@ -6,6 +6,7 @@ import com.example.data.model.Asset
 import com.example.data.model.Repair
 import com.example.data.model.Maintenance
 import com.example.data.model.AssetUpdateLog
+import com.example.data.model.User
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -390,5 +391,24 @@ class ITRepository(private val dao: InventoryDao) {
         } else {
             dao.insertAssetUpdateLog(log)
         }
+    }
+
+    // --- User Operations ---
+    val allUsers: Flow<List<User>> = dao.getAllUsers()
+
+    suspend fun getUserByUsername(uname: String): User? {
+        return dao.getUserByUsername(uname)
+    }
+
+    suspend fun insertUser(user: User) {
+        dao.insertUser(user)
+    }
+
+    suspend fun updateUser(user: User) {
+        dao.updateUser(user)
+    }
+
+    suspend fun deleteUser(user: User) {
+        dao.deleteUser(user)
     }
 }

@@ -1,7 +1,7 @@
 package com.example
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -16,7 +16,7 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.ITViewModel
 import com.example.ui.viewmodel.ITViewModelFactory
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val database by lazy { InventoryDatabase.getDatabase(this) }
     private val repository by lazy { ITRepository(database.inventoryDao()) }
@@ -27,9 +27,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun tryInitializeFirebase() {
-        val apiKey = try { BuildConfig.FIREBASE_API_KEY } catch (e: Exception) { "" }
-        val appId = try { BuildConfig.FIREBASE_APPLICATION_ID } catch (e: Exception) { "" }
-        val projectId = try { BuildConfig.FIREBASE_PROJECT_ID } catch (e: Exception) { "" }
+        val apiKey = try { BuildConfig.FIREBASE_API_KEY } catch (e: Throwable) { "" }
+        val appId = try { BuildConfig.FIREBASE_APPLICATION_ID } catch (e: Throwable) { "" }
+        val projectId = try { BuildConfig.FIREBASE_PROJECT_ID } catch (e: Throwable) { "" }
         
         val isValid = apiKey.isNotBlank() && apiKey != "YOUR_FIREBASE_API_KEY" &&
                 appId.isNotBlank() && appId != "YOUR_FIREBASE_APPLICATION_ID" &&
@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
                     .setProjectId(projectId)
                     .build()
                 com.google.firebase.FirebaseApp.initializeApp(this, options)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 e.printStackTrace()
             }
         }

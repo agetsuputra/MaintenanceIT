@@ -46,6 +46,12 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         initialValue = emptyList()
     )
 
+    val allUsers: StateFlow<List<com.example.data.model.User>> = repository.allUsers.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
     // Range Filter Dates (Default is Last 30 Days to Future 30 Days)
     val filterStartDate = MutableStateFlow<Long>(getStartOfRange())
     val filterEndDate = MutableStateFlow<Long>(getEndOfRange())
@@ -144,6 +150,13 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 )
                 sampleMaintenances.forEach { repository.insertMaintenance(it) }
             }
+            
+            // Seed default users if empty
+            val users = repository.allUsers.first()
+            if (users.isEmpty()) {
+                repository.insertUser(com.example.data.model.User("sumayasa", "Sumayasa", "123456", "Kepala Unit IT", false))
+                repository.insertUser(com.example.data.model.User("deaget", "Deaget", "123456", "Staff IT", false))
+            }
         }
     }
 
@@ -216,6 +229,20 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         }
     }
 
+    fun verifyRepair(repair: Repair, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            repository.updateRepair(repair.copy(status = "Selesai & Terverifikasi"))
+            onComplete()
+        }
+    }
+
+    fun verifyMaintenance(maintenance: Maintenance, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            repository.updateMaintenance(maintenance.copy(status = "Selesai & Terverifikasi"))
+            onComplete()
+        }
+    }
+
     fun selectAssetByInventoryNum(invNum: String) {
         viewModelScope.launch {
             val asset = repository.getAssetByInventory(invNum)
@@ -259,6 +286,20 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
             if (selectedAsset.value?.inventoryNumber == asset.inventoryNumber) {
                 selectedAsset.value = updatedAsset
             }
+            onComplete()
+        }
+    }
+
+    fun saveUser(user: com.example.data.model.User, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            repository.insertUser(user)
+            onComplete()
+        }
+    }
+
+    fun deleteUser(user: com.example.data.model.User, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            repository.deleteUser(user)
             onComplete()
         }
     }
@@ -456,7 +497,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 html.append("    <th style=\"width: 250px;\">Kode Verifikasi Keaslian (SHA-Signature)</th>\n")
                 html.append("  </tr>\n")
 
-                val repairs = filteredRepairs.value
+                val repairs = filteredRepairs.value.filter { it.status == "Selesai & Terverifikasi" }
                 repairs.forEach { r ->
                     val endStr = r.endTime?.let { dateFormat.format(Date(it)) } ?: "Sedang Diproses/Hold"
                     val devName = assetMap[r.inventoryNumber]?.name ?: "Perangkat Tidak Dikenal"
@@ -510,7 +551,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 html.append("    <th style=\"width: 250px;\">Kode Verifikasi Keaslian (SHA-Signature)</th>\n")
                 html.append("  </tr>\n")
 
-                val maints = filteredMaintenances.value
+                val maints = filteredMaintenances.value.filter { m -> m.status == "Selesai & Terverifikasi" }
                 maints.forEach { m ->
                     val endStr = m.endTime?.let { dateFormat.format(Date(it)) } ?: "Sedang Diproses"
                     val devName = assetMap[m.inventoryNumber]?.name ?: "Perangkat Tidak Dikenal"

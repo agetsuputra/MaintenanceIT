@@ -36,6 +36,9 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -244,7 +247,8 @@ fun WatermarkedAsyncImage(
 enum class AppTab {
     Dashboard,
     Perbaikan,
-    Perawatan
+    Perawatan,
+    UserManagement
 }
 
 enum class SubScreen {
@@ -312,6 +316,9 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
+    var currentUsername by rememberSaveable { mutableStateOf("") }
+    var currentUserRole by rememberSaveable { mutableStateOf("") }
+
     if (showSplash) {
         Box(
             modifier = Modifier
@@ -360,6 +367,11 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 )
             }
         }
+    } else if (currentUsername.isEmpty()) {
+        LoginScreen(viewModel = viewModel, onLoginSuccess = { username, role ->
+            currentUsername = username
+            currentUserRole = role
+        })
     } else {
         Scaffold(
             modifier = modifier.testTag("main_screen_scaffold"),
@@ -371,7 +383,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     ) {
                         Box(
                             modifier = Modifier
-                                .padding(top = 4.dp, bottom = 4.dp, start = 4.dp, end = 12.dp)
+                                .padding(end = 10.dp)
                                 .size(36.dp)
                                 .background(
                                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -408,6 +420,58 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         modifier = Modifier.testTag("btn_seed")
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = "Seed Sample Data")
+                    }
+
+                    var userMenuExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(
+                            onClick = { userMenuExpanded = true },
+                            modifier = Modifier.testTag("btn_user_profile")
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = currentUsername.take(1).uppercase(),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = userMenuExpanded,
+                            onDismissRequest = { userMenuExpanded = false }
+                        ) {
+                            Text(
+                                text = "Halo, $currentUsername!",
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = currentUserRole,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Divider(modifier = Modifier.padding(vertical = 4.dp))
+                            DropdownMenuItem(
+                                text = { Text("Log Out") },
+                                onClick = {
+                                    currentUsername = ""
+                                    currentUserRole = ""
+                                    userMenuExpanded = false
+                                    currentTab = AppTab.Dashboard
+                                    currentSubScreen = SubScreen.List
+                                },
+                                leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null) }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -449,6 +513,16 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     icon = { Icon(Icons.Default.Settings, contentDescription = "Perawatan") },
                     label = { Text("Rutin", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     modifier = Modifier.testTag("nav_tab_perawatan")
+                )
+                NavigationBarItem(
+                    selected = currentTab == AppTab.UserManagement,
+                    onClick = {
+                        currentTab = AppTab.UserManagement
+                        currentSubScreen = SubScreen.List
+                    },
+                    icon = { Icon(Icons.Default.ManageAccounts, contentDescription = "Manajemen User") },
+                    label = { Text("User", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    modifier = Modifier.testTag("nav_tab_users")
                 )
             }
         }
@@ -533,7 +607,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 },
                                 onOpenScanner = { callback -> showingBarcodeScanner = callback },
                                 onOpenCamera = systemCameraOpener,
-                                initialInventoryNumber = prefilledInventoryNumber
+                                initialInventoryNumber = prefilledInventoryNumber,
+                                currentUser = currentUsername
                             )
                         }
                         else -> {}
@@ -576,11 +651,28 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 },
                                 onOpenScanner = { callback -> showingBarcodeScanner = callback },
                                 onOpenCamera = systemCameraOpener,
-                                initialInventoryNumber = prefilledInventoryNumber
+                                initialInventoryNumber = prefilledInventoryNumber,
+                                currentUser = currentUsername
                             )
                         }
                         else -> {}
                     }
+                }
+                AppTab.UserManagement -> {
+                    val userListState = viewModel.allUsers.collectAsStateWithLifecycle(emptyList())
+                    UserManagementScreen(
+                        users = userListState.value,
+                        onSaveUser = { user ->
+                            viewModel.saveUser(user) {
+                                Toast.makeText(context, "User berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onDeleteUser = { user ->
+                            viewModel.deleteUser(user) {
+                                Toast.makeText(context, "User berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -640,7 +732,15 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     Toast.makeText(context, "Status perbaikan berhasil diganti ke Selesai!", Toast.LENGTH_SHORT).show()
                 }
             },
-            onOpenCamera = systemCameraOpener
+            onOpenCamera = systemCameraOpener,
+            userRole = currentUserRole,
+            onVerifyRepair = { verifiedRepair ->
+                viewModel.verifyRepair(verifiedRepair) {
+                    showingRepairDetail = null
+                    Toast.makeText(context, "Laporan perbaikan berhasil diverifikasi oleh Kepala Unit IT!", Toast.LENGTH_SHORT).show()
+                }
+            },
+            viewModel = viewModel
         )
     }
 
@@ -654,7 +754,15 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     Toast.makeText(context, "Perawatan rutin telah diselesaikan!", Toast.LENGTH_SHORT).show()
                 }
             },
-            onOpenCamera = systemCameraOpener
+            onOpenCamera = systemCameraOpener,
+            userRole = currentUserRole,
+            onVerifyMaintenance = { verifiedMaint ->
+                viewModel.verifyMaintenance(verifiedMaint) {
+                    showingMaintenanceDetail = null
+                    Toast.makeText(context, "Laporan perawatan rutin berhasil diverifikasi oleh Kepala Unit IT!", Toast.LENGTH_SHORT).show()
+                }
+            },
+            viewModel = viewModel
         )
     }
 
@@ -694,9 +802,9 @@ fun DashboardScreen(
     // Count statistics
     val totalAssets = assets.size
     val activeAssets = assets.count { it.status == "Aktif" }
-    val brokenAssets = assets.count { it.status == "Rusak" }
+    val brokenAssets = assets.count { it.status == "Rusak Permanen" }
     val holdRepairs = assets.count { it.status == "Hold" }
-    val maintenanceAssets = assets.count { it.status == "Perawatan" }
+    val maintenanceAssets = 0
 
     LazyColumn(
         modifier = Modifier
@@ -2063,7 +2171,8 @@ fun AddRepairForm(
     onCancel: () -> Unit,
     onOpenScanner: ((String) -> Unit) -> Unit,
     onOpenCamera: ((String) -> Unit) -> Unit,
-    initialInventoryNumber: String? = null
+    initialInventoryNumber: String? = null,
+    currentUser: String
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -2080,7 +2189,7 @@ fun AddRepairForm(
     var photoAfter by remember { mutableStateOf<String?>(null) }
     var photoUser by remember { mutableStateOf<String?>(null) }
     
-    var technician by remember { mutableStateOf("") }
+    var technician by remember { mutableStateOf(currentUser) }
 
     val statusOptions = listOf("Dalam Pengerjaan", "Hold", "Selesai")
     var statusExpanded by remember { mutableStateOf(false) }
@@ -2265,6 +2374,7 @@ fun AddRepairForm(
                 label = { Text("Teknisi Penanggung Jawab") },
                 placeholder = { Text("Nama Lengkap") },
                 singleLine = true,
+                readOnly = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("repair_tf_tech"),
@@ -2471,7 +2581,10 @@ fun RepairDetailDialog(
     repair: Repair,
     onDismiss: () -> Unit,
     onResumeRepair: (Repair) -> Unit,
-    onOpenCamera: ((String) -> Unit) -> Unit
+    onOpenCamera: ((String) -> Unit) -> Unit,
+    userRole: String,
+    onVerifyRepair: (Repair) -> Unit,
+    viewModel: ITViewModel
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -2486,6 +2599,19 @@ fun RepairDetailDialog(
     var localPhotoUser by remember { mutableStateOf<String?>(repair.photoUser) }
 
     val currentDateStr = remember { SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date()) }
+
+    var showingPinVerification by remember { mutableStateOf(false) }
+
+    if (showingPinVerification) {
+        PinVerificationDialog(
+            viewModel = viewModel,
+            onDismiss = { showingPinVerification = false },
+            onPinCorrect = {
+                showingPinVerification = false
+                onVerifyRepair(repair)
+            }
+        )
+    }
 
     Dialog(onDismissRequest = {
         keyboardController?.hide()
@@ -2565,7 +2691,7 @@ fun RepairDetailDialog(
                         DetailTextSection("Masalah / Kendala", repair.problem)
                     }
 
-                    if (repair.status == "Selesai") {
+                    if (repair.status == "Selesai" || repair.status == "Selesai & Terverifikasi") {
                         item {
                             DetailTextSection("Penyebab", repair.cause.ifBlank { "Belum dicatat / Belum diketahui" })
                         }
@@ -2605,7 +2731,7 @@ fun RepairDetailDialog(
                                     modifier = Modifier.fillMaxWidth().height(130.dp)
                                 )
 
-                                if (repair.status == "Selesai") {
+                                if (repair.status == "Selesai" || repair.status == "Selesai & Terverifikasi") {
                                     Text("📸 Foto Sesudah (After)", fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
                                     WatermarkedAsyncImage(
                                         photoStr = repair.photoAfter,
@@ -2750,6 +2876,68 @@ fun RepairDetailDialog(
                                         Spacer(Modifier.width(8.dp))
                                         Text("Kirim & Selesaikan Perbaikan", fontWeight = FontWeight.Bold)
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    if (repair.status == "Selesai") {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            if (userRole == "Kepala Unit IT") {
+                                Button(
+                                    onClick = { showingPinVerification = true },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(50.dp)
+                                        .testTag("btn_verify_repair_acc"),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Default.Verified, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Verifikasi & ACC Laporan Perbaikan", fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(0.3f)),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(0.3f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                                        Spacer(Modifier.width(10.dp))
+                                        Text(
+                                            "Laporan perbaikan selesai. Menunggu ACC/Verifikasi oleh Kepala Unit IT.",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else if (repair.status == "Selesai & Terverifikasi") {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2E7D32).copy(alpha = 0.12f)),
+                                border = BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF2E7D32))
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        "Laporan Perbaikan Selesai & Terverifikasi oleh Kepala Unit IT (ACC)",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF2E7D32)
+                                    )
                                 }
                             }
                         }
@@ -2959,14 +3147,20 @@ fun MaintItemCard(maintenance: Maintenance, onClick: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF0277BD)
                 )
+                val statusColor = when (maintenance.status) {
+                    "Dalam Pengerjaan" -> Color(0xFF0277BD) // Cyan/Blue
+                    "Selesai" -> Color(0xFF2E7D32) // Green
+                    "Selesai & Terverifikasi" -> Color(0xFF2E7D32) // Green
+                    else -> Color(0xFF2E7D32)
+                }
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF2E7D32).copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.4f))
+                    color = statusColor.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = "Selesai Pemeriksaan",
-                        color = Color(0xFF2E7D32),
+                        text = maintenance.status,
+                        color = statusColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -3008,7 +3202,8 @@ fun AddMaintenanceForm(
     onCancel: () -> Unit,
     onOpenScanner: ((String) -> Unit) -> Unit,
     onOpenCamera: ((String) -> Unit) -> Unit,
-    initialInventoryNumber: String? = null
+    initialInventoryNumber: String? = null,
+    currentUser: String
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -3026,7 +3221,7 @@ fun AddMaintenanceForm(
     var photoAfter by remember { mutableStateOf<String?>(null) }
     var photoUser by remember { mutableStateOf<String?>(null) }
     
-    var technician by remember { mutableStateOf("") }
+    var technician by remember { mutableStateOf(currentUser) }
 
     LazyColumn(
         modifier = Modifier
@@ -3179,6 +3374,7 @@ fun AddMaintenanceForm(
                 label = { Text("Teknisi Penanggung Jawab") },
                 placeholder = { Text("Nama Lengkap") },
                 singleLine = true,
+                readOnly = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("maint_tf_tech"),
@@ -3380,7 +3576,10 @@ fun MaintenanceDetailDialog(
     maintenance: Maintenance,
     onDismiss: () -> Unit,
     onUpdateMaintenance: (Maintenance) -> Unit,
-    onOpenCamera: ((String) -> Unit) -> Unit
+    onOpenCamera: ((String) -> Unit) -> Unit,
+    userRole: String,
+    onVerifyMaintenance: (Maintenance) -> Unit,
+    viewModel: ITViewModel
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -3396,6 +3595,19 @@ fun MaintenanceDetailDialog(
     var localPhotoUser by remember { mutableStateOf<String?>(maintenance.photoUser) }
 
     val currentDateStr = remember { SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date()) }
+
+    var showingPinVerification by remember { mutableStateOf(false) }
+
+    if (showingPinVerification) {
+        PinVerificationDialog(
+            viewModel = viewModel,
+            onDismiss = { showingPinVerification = false },
+            onPinCorrect = {
+                showingPinVerification = false
+                onVerifyMaintenance(maintenance)
+            }
+        )
+    }
 
     Dialog(onDismissRequest = {
         keyboardController?.hide()
@@ -3467,7 +3679,7 @@ fun MaintenanceDetailDialog(
                         }
                     }
 
-                    if (maintenance.status == "Selesai") {
+                    if (maintenance.status == "Selesai" || maintenance.status == "Selesai & Terverifikasi") {
                         item {
                             DetailTextSection("Tindakan yang Dilakukan", maintenance.actionTaken)
                         }
@@ -3495,7 +3707,7 @@ fun MaintenanceDetailDialog(
                                     modifier = Modifier.fillMaxWidth().height(130.dp)
                                 )
 
-                                if (maintenance.status == "Selesai") {
+                                if (maintenance.status == "Selesai" || maintenance.status == "Selesai & Terverifikasi") {
                                     Text("📸 Foto Sesudah (After)", fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
                                     WatermarkedAsyncImage(
                                         photoStr = maintenance.photoAfter,
@@ -3647,6 +3859,68 @@ fun MaintenanceDetailDialog(
                                         Spacer(Modifier.width(8.dp))
                                         Text("Kirim & Selesaikan Perawatan", fontWeight = FontWeight.Bold)
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    if (maintenance.status == "Selesai") {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            if (userRole == "Kepala Unit IT") {
+                                Button(
+                                    onClick = { showingPinVerification = true },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(50.dp)
+                                        .testTag("btn_verify_maint_acc"),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0277BD)),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Default.Verified, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Verifikasi & ACC Laporan Perawatan", fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(0.3f)),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(0.3f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                                        Spacer(Modifier.width(10.dp))
+                                        Text(
+                                            "Laporan perawatan selesai. Menunggu ACC/Verifikasi oleh Kepala Unit IT.",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else if (maintenance.status == "Selesai & Terverifikasi") {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2E7D32).copy(alpha = 0.12f)),
+                                border = BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF2E7D32))
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        "Laporan Perawatan Selesai & Terverifikasi oleh Kepala Unit IT (ACC)",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF2E7D32)
+                                    )
                                 }
                             }
                         }
@@ -4108,4 +4382,630 @@ fun CameraSimulationDialog(
             }
         }
     }
+}
+
+@Composable
+fun PinVerificationDialog(
+    viewModel: ITViewModel,
+    onDismiss: () -> Unit,
+    onPinCorrect: () -> Unit
+) {
+    val usersState = viewModel.allUsers.collectAsStateWithLifecycle(emptyList())
+    val kepalaUnit = usersState.value.find { it.role == "Kepala Unit IT" }
+
+    var pin by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as? androidx.fragment.app.FragmentActivity
+
+    // Check if biometric is enabled on Kepala Unit IT
+    val isBiometricEnabled = kepalaUnit?.isBiometricEnabled == true
+
+    LaunchedEffect(isBiometricEnabled, kepalaUnit) {
+        if (isBiometricEnabled && activity != null) {
+            showBiometricPrompt(
+                activity = activity,
+                title = "Verifikasi Sidik Jari",
+                subtitle = "Verifikasi oleh Kepala Unit IT",
+                description = "Sentuh sensor sidik jari perangkat Anda untuk memverifikasi dan meng-acc.",
+                onSuccess = {
+                    onPinCorrect()
+                },
+                onError = { err ->
+                    // Fall back to manual PIN entry, no error state triggered unless they fail PIN
+                }
+            )
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Verifikasi Kepala Unit IT", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
+        text = {
+            Column {
+                Text("Masukkan PIN 6-digit untuk meng-acc/memvalidasi laporan ini.", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = { newVal ->
+                        if (newVal.all { it.isDigit() } && newVal.length <= 6) {
+                            pin = newVal
+                            showError = false
+                        }
+                    },
+                    label = { Text("PIN Keamanan") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("pin_verification_input"),
+                    isError = showError
+                )
+
+                if (isBiometricEnabled && activity != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            showBiometricPrompt(
+                                activity = activity,
+                                title = "Verifikasi Sidik Jari",
+                                subtitle = "Verifikasi oleh Kepala Unit IT",
+                                description = "Sentuh sensor sidik jari perangkat Anda.",
+                                onSuccess = { onPinCorrect() },
+                                onError = { valMsg -> Toast.makeText(context, valMsg, Toast.LENGTH_SHORT).show() }
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Fingerprint, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Verifikasi dengan Sidik Jari")
+                    }
+                }
+
+                if (showError) {
+                    Text(
+                        text = "PIN salah! Hanya Kepala Unit IT yang dapat memverifikasi.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val correctPin = kepalaUnit?.pin ?: "123456"
+                    if (pin == correctPin) {
+                        onPinCorrect()
+                    } else {
+                        showError = true
+                    }
+                },
+                enabled = pin.length == 6,
+                modifier = Modifier.testTag("pin_confirm_button")
+            ) {
+                Text("Verifikasi & ACC")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Batal")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginScreen(
+    viewModel: ITViewModel,
+    onLoginSuccess: (String, String) -> Unit
+) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf(false) }
+    
+    val context = LocalContext.current
+    val activity = context as? androidx.fragment.app.FragmentActivity
+    val usersState = viewModel.allUsers.collectAsStateWithLifecycle(emptyList())
+
+    // Find if there is any user with biometric enabled
+    val biometricUsers = usersState.value.filter { it.isBiometricEnabled }
+    val hasBiometricUser = biometricUsers.isNotEmpty()
+
+    // Start biometric auth on tap/launch if enabled
+    fun triggerBiometricLogin() {
+        if (activity != null && hasBiometricUser) {
+            showBiometricPrompt(
+                activity = activity,
+                title = "Login Sidik Jari",
+                subtitle = "Masuk ke IT Support Service",
+                description = "Sentuh sensor sidik jari perangkat Anda untuk login cepat.",
+                onSuccess = {
+                    // Log in as the first biometric user (or the one matching username if they entered one)
+                    val targetUser = if (username.isNotBlank()) {
+                        biometricUsers.find { it.username == username.trim().lowercase() } ?: biometricUsers.first()
+                    } else {
+                        biometricUsers.first()
+                    }
+                    onLoginSuccess(targetUser.username, targetUser.role)
+                    Toast.makeText(context, "Selamat datang kembali, ${targetUser.name}!", Toast.LENGTH_SHORT).show()
+                },
+                onError = { err ->
+                    Toast.makeText(context, "Gagal sidik jari: $err", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Header Logo
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(20.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "App Logo",
+                        modifier = Modifier.size(56.dp)
+                    )
+                }
+
+                Text(
+                    text = "IT Support Service",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Text(
+                    text = "Silakan masuk dengan akun IT Anda",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = {
+                        username = it
+                        showError = false
+                    },
+                    label = { Text("Username") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("login_username_input"),
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+                )
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { newVal ->
+                        if (newVal.all { it.isDigit() } && newVal.length <= 6) {
+                            password = newVal
+                            showError = false
+                        }
+                    },
+                    label = { Text("PIN Keamanan (6 Digit)") },
+                    singleLine = true,
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth().testTag("login_password_input"),
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                    trailingIcon = {
+                        val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(image, contentDescription = null)
+                        }
+                    }
+                )
+
+                if (showError) {
+                    Text(
+                        text = "Username atau PIN salah!",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val u = username.trim().lowercase()
+                            val users = usersState.value
+                            val match = users.find { it.username == u && it.pin == password }
+                            if (match != null) {
+                                onLoginSuccess(match.username, match.role)
+                                Toast.makeText(context, "Selamat datang, ${match.name}!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                showError = true
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("btn_login_submit"),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = username.isNotBlank() && password.length == 6
+                    ) {
+                        Text("Masuk", fontWeight = FontWeight.Bold)
+                    }
+
+                    if (hasBiometricUser && activity != null) {
+                        Button(
+                            onClick = { triggerBiometricLogin() },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                            modifier = Modifier
+                                .height(48.dp)
+                                .testTag("btn_login_biometric"),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Fingerprint, contentDescription = "Masuk Sidik Jari")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun showBiometricPrompt(
+    activity: androidx.fragment.app.FragmentActivity,
+    title: String,
+    subtitle: String,
+    description: String,
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit
+) {
+    val executor: java.util.concurrent.Executor = androidx.core.content.ContextCompat.getMainExecutor(activity)
+    val biometricPrompt = androidx.biometric.BiometricPrompt(activity, executor,
+        object : androidx.biometric.BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                super.onAuthenticationError(errorCode, errString)
+                onError(errString.toString())
+            }
+
+            override fun onAuthenticationSucceeded(result: androidx.biometric.BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                onSuccess()
+            }
+
+            override fun onAuthenticationFailed() {
+                super.onAuthenticationFailed()
+                onError("Sidik jari tidak dikenali.")
+            }
+        })
+
+    val promptInfo = androidx.biometric.BiometricPrompt.PromptInfo.Builder()
+        .setTitle(title)
+        .setSubtitle(subtitle)
+        .setDescription(description)
+        .setNegativeButtonText("Batal")
+        .build()
+
+    try {
+        biometricPrompt.authenticate(promptInfo)
+    } catch (e: Exception) {
+        onError("Gagal memulai autentikasi sidik jari: ${e.message}")
+    }
+}
+
+@Composable
+fun UserManagementScreen(
+    users: List<com.example.data.model.User>,
+    onSaveUser: (com.example.data.model.User) -> Unit,
+    onDeleteUser: (com.example.data.model.User) -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context as? androidx.fragment.app.FragmentActivity
+
+    var editingUser by remember { mutableStateOf<com.example.data.model.User?>(null) }
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .testTag("user_management_screen")
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Manajemen Akun IT",
+                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Button(
+                onClick = { showAddDialog = true },
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text("Tambah User", fontSize = 12.sp)
+            }
+        }
+
+        Text(
+            "Mengelola otentikasi PIN 6-digit dan login sidik jari unit/personal.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            items(users, key = { it.username }) { user ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { editingUser = user },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = user.name,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Text(
+                                        text = user.role,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "@${user.username}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (user.isBiometricEnabled) {
+                                Icon(
+                                    imageVector = Icons.Default.Fingerprint,
+                                    contentDescription = "Sidik Jari Aktif",
+                                    tint = Color(0xFF2E7D32),
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                            }
+                            IconButton(onClick = { editingUser = user }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit User", tint = MaterialTheme.colorScheme.primary)
+                            }
+                            if (user.username != "sumayasa" && user.username != "deaget") {
+                                IconButton(onClick = { onDeleteUser(user) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Hapus User", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddDialog) {
+        UserEditorDialog(
+            user = null,
+            onDismiss = { showAddDialog = false },
+            onSave = { savedUser ->
+                onSaveUser(savedUser)
+                showAddDialog = false
+            },
+            activity = activity
+        )
+    }
+
+    editingUser?.let { user ->
+        UserEditorDialog(
+            user = user,
+            onDismiss = { editingUser = null },
+            onSave = { savedUser ->
+                onSaveUser(savedUser)
+                editingUser = null
+            },
+            activity = activity
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserEditorDialog(
+    user: com.example.data.model.User?,
+    onDismiss: () -> Unit,
+    onSave: (com.example.data.model.User) -> Unit,
+    activity: androidx.fragment.app.FragmentActivity?
+) {
+    var username by remember { mutableStateOf(user?.username ?: "") }
+    var name by remember { mutableStateOf(user?.name ?: "") }
+    var pin by remember { mutableStateOf(user?.pin ?: "") }
+    var role by remember { mutableStateOf(user?.role ?: "Staff IT") }
+    var isBiometricEnabled by remember { mutableStateOf(user?.isBiometricEnabled ?: false) }
+
+    val roleOptions = listOf("Kepala Unit IT", "Staff IT")
+    val context = LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                if (user == null) "Tambah Akun IT Baru" else "Edit Akun IT",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { if (user == null) username = it.trim().lowercase() },
+                    label = { Text("Username") },
+                    enabled = user == null,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nama Lengkap") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = { newVal ->
+                        if (newVal.all { it.isDigit() } && newVal.length <= 6) {
+                            pin = newVal
+                        }
+                    },
+                    label = { Text("PIN Keamanan (6 Digit)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Column {
+                    Text("Role Akses:", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        roleOptions.forEach { opt ->
+                            val selected = role == opt
+                            FilterChip(
+                                selected = selected,
+                                onClick = { role = opt },
+                                label = { Text(opt) }
+                            )
+                        }
+                    }
+                }
+
+                if (activity != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Akses Sidik Jari", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("Izinkan login & validasi tanpa ketik PIN", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = isBiometricEnabled,
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        showBiometricPrompt(
+                                            activity = activity,
+                                            title = "Verifikasi Sidik Jari",
+                                            subtitle = "Mendaftarkan perangkat sidik jari Anda",
+                                            description = "Sentuh sensor sidik jari perangkat Anda untuk memverifikasi.",
+                                            onSuccess = {
+                                                isBiometricEnabled = true
+                                                Toast.makeText(context, "Sidik Jari berhasil dikonfigurasi!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            onError = { err ->
+                                                isBiometricEnabled = false
+                                                Toast.makeText(context, "Batal / Gagal menyetel sidik jari: $err", Toast.LENGTH_LONG).show()
+                                            }
+                                        )
+                                    } else {
+                                        isBiometricEnabled = false
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (username.isBlank() || name.isBlank() || pin.length != 6) {
+                        Toast.makeText(context, "Harap lengkapi semua isian (PIN harus 6 digit)!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        onSave(
+                            com.example.data.model.User(
+                                username = username.trim().lowercase(),
+                                name = name.trim(),
+                                pin = pin,
+                                role = role,
+                                isBiometricEnabled = isBiometricEnabled
+                            )
+                        )
+                    }
+                },
+                enabled = username.isNotBlank() && name.isNotBlank() && pin.length == 6
+            ) {
+                Text("Simpan")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Batal")
+            }
+        }
+    )
 }

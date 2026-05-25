@@ -2,22 +2,22 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="256dp"
     android:height="256dp"
-    android:viewportWidth="512"
-    android:viewportHeight="512">
+    android:viewportWidth="24"
+    android:viewportHeight="24">
 
-    <!-- Background card with high-quality squircle rounded square -->
+    <!-- Perfectly symmetric squircle background (no stretching) -->
     <path
         android:fillColor="#1E3A8A"
-        android:pathData="M 120 40 L 392 40 C 458 40, 472 54, 472 120 L 472 392 C 472 458, 458 472, 392 472 L 120 472 C 54 472, 40 458, 40 392 L 40 120 C 40 54, 54 40, 120 40 Z" />
+        android:pathData="M 6.5,1.5 L 17.5,1.5 C 20.8,1.5 22.5,3.2 22.5,6.5 L 22.5,17.5 C 22.5,20.8 20.8,22.5 17.5,22.5 L 6.5,22.5 C 3.2,22.5 1.5,20.8 1.5,17.5 L 1.5,6.5 C 1.5,3.2 3.2,1.5 6.5,1.5 Z" />
 
-    <!-- A beautiful, dynamic accent light-blue circle for depth and visual balance -->
+    <!-- High-contrast central circular element to give depth and modern style -->
     <path
         android:fillColor="#3B82F6"
-        android:pathData="M 256 100 C 342 100, 412 170, 412 256 C 412 342, 342 412, 256 412 C 170 412, 100 342, 100 256 C 100 170, 170 100, 256 100 Z" />
+        android:pathData="M 12 4.5 C 16.1 4.5 19.5 7.9 19.5 12 C 19.5 16.1 16.1 19.5 12 19.5 C 7.9 19.5 4.5 16.1 4.5 12 C 4.5 7.9 7.9 4.5 12 4.5 Z" />
 
-    <!-- Sleek, clear, perfectly proportioned white wrench rotated beautifully at 45 degrees -->
+    <!-- Symmetrical crisp white wrench perfectly aligned inside the circles -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M 374 332 L 332 374 C 322 384, 306 384, 296 374 L 178 256 C 170 262, 160 266, 149 266 C 117 266, 91 240, 91 208 C 91 190, 99 174, 112 163 L 157 208 L 208 157 L 163 112 C 174 99, 190 91, 208 91 C 240 91, 266 117, 266 149 C 266 160, 262 170, 256 178 L 374 296 C 384 306, 384 322, 374 332 Z" />
+        android:pathData="M 15.09,5.91 C 13.08,3.90 10.07,3.49 7.65,4.67 L 11.27,8.30 L 8.27,11.30 L 4.65,7.67 C 3.48,10.10 3.89,13.11 5.90,15.12 C 7.76,16.98 10.48,17.47 12.79,16.60 L 18.65,22.45 C 19.06,22.86 19.73,22.86 20.14,22.45 L 22.45,20.14 C 22.86,19.73 22.86,19.06 22.45,18.65 L 16.60,12.79 C 17.47,10.48 16.98,7.76 15.09,5.91 Z" />
 
 </vector>

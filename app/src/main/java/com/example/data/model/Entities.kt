@@ -63,3 +63,12 @@ data class AssetUpdateLog(
     val newDescription: String?,
     val reasonForPermanentDamage: String? = null
 )
+
+@Entity(tableName = "users")
+data class User(
+    @PrimaryKey val username: String, // lowercase, unique identifier
+    val name: String,
+    val pin: String,
+    val role: String, // "Kepala Unit IT" or "Staff IT"
+    val isBiometricEnabled: Boolean = false
+)
