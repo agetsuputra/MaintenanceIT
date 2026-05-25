@@ -65,6 +65,9 @@ interface InventoryDao {
     @Query("SELECT * FROM asset_updates WHERE inventoryNumber = :invNum ORDER BY updateTime DESC")
     fun getUpdateLogsForAsset(invNum: String): Flow<List<AssetUpdateLog>>
 
+    @Query("SELECT * FROM asset_updates ORDER BY updateTime DESC")
+    fun getAllUpdateLogs(): Flow<List<AssetUpdateLog>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAssetUpdateLog(log: AssetUpdateLog)
 

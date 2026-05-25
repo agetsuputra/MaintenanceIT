@@ -2,6 +2,19 @@ package com.example.ui.viewmodel
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.pdf.PdfDocument
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Color
+import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.Typeface
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.Layout
+import android.util.Base64
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -47,6 +60,12 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
     )
 
     val allUsers: StateFlow<List<com.example.data.model.User>> = repository.allUsers.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val allUpdateLogs: StateFlow<List<com.example.data.model.AssetUpdateLog>> = repository.allUpdateLogs.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -400,199 +419,776 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
             .replace("'", "&#39;")
     }
 
-    private fun getEmbeddedPhotoHtml(photoStr: String?): String {
-        if (photoStr.isNullOrBlank()) return "Tidak ada foto"
-        val (url, loc, date) = parseWatermarkedPhoto(photoStr)
-        if (url.startsWith("data:image") && url.contains("base64,")) {
-            return "<div style=\"text-align:center;\"><img src=\"$url\" height=\"100\" width=\"133\" style=\"border:1px solid #ccc;\" /><br/><small style=\"font-size:10px;color:#555;\">${escapeHtml(loc)}<br/>${escapeHtml(date)}</small></div>"
-        } else if (url.startsWith("http")) {
-            return "<div style=\"text-align:center;\"><img src=\"$url\" height=\"100\" width=\"133\" style=\"border:1px solid #ccc;\" /><br/><small style=\"font-size:10px;color:#555;\">${escapeHtml(loc)}<br/>${escapeHtml(date)}</small></div>"
+    private fun decodeBase64ToBitmap(base64Str: String?): Bitmap? {
+        if (base64Str.isNullOrBlank()) return null
+        return try {
+            val clean = if (base64Str.startsWith("data:image")) {
+                base64Str.substringAfter("base64,")
+            } else {
+                base64Str
+            }
+            val bytes = Base64.decode(clean, Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        } catch (e: Exception) {
+            null
         }
-        return "Tidak ada foto"
     }
 
-    // --- Excel / CSV Exporter ---
+    class PdfPageWriter {
+        val document = PdfDocument()
+        var currentPage: PdfDocument.Page? = null
+        var canvas: Canvas? = null
+        var pageNumber = 0
+        var currentY = 0f
+        val margin = 40f
+        val bottomLimit = 842f - 60f
 
-    fun exportToExcel(context: Context, type: String): File? {
+        fun newPage(title: String, subtitle: String) {
+            if (currentPage != null) {
+                document.finishPage(currentPage)
+            }
+            pageNumber++
+            val pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageNumber).create()
+            val page = document.startPage(pageInfo)
+            currentPage = page
+            canvas = page.canvas
+            currentY = margin
+
+            canvas?.let { c ->
+                val bandPaint = Paint().apply {
+                    color = 0xFF0D47A1.toInt()
+                    style = Paint.Style.FILL
+                }
+                c.drawRect(40f, 30f, 555f, 55f, bandPaint)
+
+                val titlePaint = Paint().apply {
+                    color = Color.WHITE
+                    textSize = 10f
+                    isAntiAlias = true
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+                c.drawText(title.uppercase(), 50f, 47f, titlePaint)
+
+                val textPaint = Paint().apply {
+                    color = Color.DKGRAY
+                    textSize = 8f
+                    isAntiAlias = true
+                }
+                c.drawText("$subtitle | Halaman $pageNumber", 40f, 72f, textPaint)
+
+                val linePaint = Paint().apply {
+                    color = Color.LTGRAY
+                    strokeWidth = 1f
+                }
+                c.drawLine(40f, 78f, 555f, 78f, linePaint)
+            }
+            currentY = 95f
+        }
+
+        fun saveAndClose(context: Context, filename: String): File? {
+            if (currentPage != null) {
+                document.finishPage(currentPage)
+            }
+            return try {
+                val file = File(context.cacheDir, filename)
+                val fos = java.io.FileOutputStream(file)
+                document.writeTo(fos)
+                fos.close()
+                document.close()
+                file
+            } catch (e: Exception) {
+                e.printStackTrace()
+                document.close()
+                null
+            }
+        }
+    }
+
+    private fun drawAssetRow(
+        writer: PdfPageWriter,
+        cells: List<String>,
+        widths: List<Float>,
+        isHeader: Boolean = false
+    ) {
+        if (writer.canvas == null) return
+        val canvas = writer.canvas!!
+
+        val textPaint = TextPaint().apply {
+            color = if (isHeader) Color.WHITE else Color.BLACK
+            textSize = 7.5f
+            isAntiAlias = true
+            if (isHeader) typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+
+        val layouts = cells.mapIndexed { idx, t ->
+            val w = widths[idx]
+            val wrapW = (w - 10f).coerceAtLeast(10f).toInt()
+            StaticLayout(
+                t, textPaint, wrapW, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false
+            )
+        }
+
+        val maxTextHeight = layouts.maxOfOrNull { it.height } ?: 0
+        val rowHeight = maxTextHeight + 12f
+
+        if (writer.currentY + rowHeight > writer.bottomLimit) {
+            writer.newPage("LIST INVENTARIS ASET TIM IT SUPPORT", "Dokumen Resmi Aset IT Hub")
+            drawAssetRow(writer, listOf("No. Inventaris", "Nama Perangkat", "Kategori", "Lokasi", "Status", "Deskripsi"), widths, true)
+        }
+
+        val canvasNow = writer.canvas!!
+
+        val bgPaint = Paint().apply {
+            style = Paint.Style.FILL
+            color = if (isHeader) 0xFF0D47A1.toInt() else Color.WHITE
+        }
+        val borderPaint = Paint().apply {
+            style = Paint.Style.STROKE
+            color = 0xFFCCCCCC.toInt()
+            strokeWidth = 0.5f
+        }
+
+        canvasNow.drawRect(40f, writer.currentY, 555f, writer.currentY + rowHeight, bgPaint)
+
+        var currX = 40f
+        layouts.forEachIndexed { idx, layout ->
+            val w = widths[idx]
+            canvasNow.drawRect(currX, writer.currentY, currX + w, writer.currentY + rowHeight, borderPaint)
+
+            canvasNow.save()
+            canvasNow.translate(currX + 5f, writer.currentY + 6f)
+            layout.draw(canvasNow)
+            canvasNow.restore()
+
+            currX += w
+        }
+
+        writer.currentY += rowHeight
+    }
+
+    private fun drawRepairCard(
+        writer: PdfPageWriter,
+        r: Repair,
+        assetName: String,
+        dateFormat: SimpleDateFormat
+    ) {
+        val cardHeight = 210f
+        if (writer.currentY + cardHeight > writer.bottomLimit) {
+            writer.newPage("LAPORAN PERBAIKAN TIM IT SUPPORT", "Dokumen Resmi Perbaikan Aset")
+        }
+
+        val canvas = writer.canvas!!
+        val y = writer.currentY
+
+        val fillPaint = Paint().apply {
+            color = 0xFFFCFCFC.toInt()
+            style = Paint.Style.FILL
+        }
+        val borderPaint = Paint().apply {
+            color = 0xFFE0E0E0.toInt()
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
+        }
+        val rect = RectF(40f, y, 555f, y + cardHeight - 10f)
+        canvas.drawRoundRect(rect, 6f, 6f, fillPaint)
+        canvas.drawRoundRect(rect, 6f, 6f, borderPaint)
+
+        val titleBgPaint = Paint().apply {
+            color = 0xFFECEFF1.toInt()
+            style = Paint.Style.FILL
+        }
+        canvas.drawRoundRect(RectF(40f, y, 555f, y + 24f), 6f, 6f, titleBgPaint)
+        canvas.drawRect(40f, y + 15f, 555f, y + 24f, titleBgPaint)
+
+        val labelPaint = Paint().apply {
+            color = 0xFF37474F.toInt()
+            textSize = 8f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAntiAlias = true
+        }
+        val txt = "PERBAIKAN #${r.id} - ASET: ${r.inventoryNumber} (${assetName.uppercase()})"
+        canvas.drawText(txt, 48f, y + 15f, labelPaint)
+
+        val statusColor = when (r.status) {
+            "Selesai & Terverifikasi" -> 0xFF2E7D32.toInt()
+            "Dalam Pengerjaan" -> 0xFF1565C0.toInt()
+            "Hold" -> 0xFFC62828.toInt()
+            else -> 0xFF37474F.toInt()
+        }
+        val statusBgPaint = Paint().apply {
+            color = statusColor
+            style = Paint.Style.FILL
+        }
+        canvas.drawRoundRect(RectF(460f, y + 4f, 545f, y + 20f), 3f, 3f, statusBgPaint)
+
+        val statusTextPaint = Paint().apply {
+            color = Color.WHITE
+            textSize = 7f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText(r.status, 502.5f, y + 14f, statusTextPaint)
+
+        val textPaint = TextPaint().apply {
+            color = Color.BLACK
+            textSize = 7.5f
+            isAntiAlias = true
+        }
+        val keyPaint = TextPaint().apply {
+            color = Color.GRAY
+            textSize = 7.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAntiAlias = true
+        }
+
+        var textY = y + 36f
+        fun drawField(label: String, value: String) {
+            canvas.drawText(label, 48f, textY, keyPaint)
+            val wrapLayout = StaticLayout(
+                value, textPaint, 240, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false
+            )
+            canvas.save()
+            canvas.translate(115f, textY - 7f)
+            wrapLayout.draw(canvas)
+            canvas.restore()
+            textY += wrapLayout.height + 3f
+        }
+
+        val startStr = dateFormat.format(Date(r.startTime))
+        val endStr = r.endTime?.let { dateFormat.format(Date(it)) } ?: "Belum Selesai"
+
+        drawField("Waktu Mulai:", startStr)
+        drawField("Waktu Selesai:", endStr)
+        drawField("Kendala:", r.problem)
+        drawField("Penyebab:", r.cause)
+        drawField("Tindakan:", r.actionTaken)
+        drawField("Teknisi:", r.technician)
+        if (!r.holdReason.isNullOrBlank()) {
+            drawField("Alasan Hold:", "${r.holdReason} (Est: ${r.holdEstimate ?: "-"})")
+        }
+
+        fun drawPhoto(photoStr: String?, label: String, photoX: Float, photoY: Float) {
+            val rectBg = RectF(photoX, photoY, photoX + 70f, photoY + 48f)
+            val rectPaint = Paint().apply {
+                color = 0xFFF5F5F5.toInt()
+                style = Paint.Style.FILL
+            }
+            val strokePaint = Paint().apply {
+                color = 0xFFE0E0E0.toInt()
+                style = Paint.Style.STROKE
+                strokeWidth = 0.5f
+            }
+            canvas.drawRect(rectBg, rectPaint)
+            canvas.drawRect(rectBg, strokePaint)
+
+            val lblPaint = Paint().apply {
+                color = Color.DKGRAY
+                textSize = 6.5f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                isAntiAlias = true
+            }
+            canvas.drawText(label, photoX + 76f, photoY + 12f, lblPaint)
+
+            val imageBitmap = decodeBase64ToBitmap(photoStr)
+            if (imageBitmap != null) {
+                val src = Rect(0, 0, imageBitmap.width, imageBitmap.height)
+                val dst = Rect((photoX + 1f).toInt(), (photoY + 1f).toInt(), (photoX + 69f).toInt(), (photoY + 47f).toInt())
+                canvas.drawBitmap(imageBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
+
+                val (_, loc, date) = parseWatermarkedPhoto(photoStr)
+                val wmPaint = Paint().apply {
+                    color = Color.WHITE
+                    textSize = 4.5f
+                    isAntiAlias = true
+                    setShadowLayer(1f, 0f, 0f, Color.BLACK)
+                }
+                canvas.drawText("${loc.take(12)}, ${date.take(10)}", photoX + 3f, photoY + 43f, wmPaint)
+            } else {
+                val emptyPaint = Paint().apply {
+                    color = Color.GRAY
+                    textSize = 6.5f
+                    isAntiAlias = true
+                    textAlign = Paint.Align.CENTER
+                }
+                canvas.drawText("No Photo", photoX + 35f, photoY + 28f, emptyPaint)
+            }
+        }
+
+        drawPhoto(r.photoBefore, "SEBELUM", 375f, y + 32f)
+        drawPhoto(r.photoAfter, "SESUDAH", 375f, y + 84f)
+        drawPhoto(r.photoUser, "PENERIMA", 375f, y + 136f)
+
+        writer.currentY += cardHeight
+    }
+
+    private fun drawMaintenanceCard(
+        writer: PdfPageWriter,
+        m: Maintenance,
+        assetName: String,
+        dateFormat: SimpleDateFormat
+    ) {
+        val cardHeight = 210f
+        if (writer.currentY + cardHeight > writer.bottomLimit) {
+            writer.newPage("LAPORAN PERAWATAN TIM IT SUPPORT", "Dokumen Resmi Perawatan Rutin")
+        }
+
+        val canvas = writer.canvas!!
+        val y = writer.currentY
+
+        val fillPaint = Paint().apply {
+            color = 0xFFFCFCFC.toInt()
+            style = Paint.Style.FILL
+        }
+        val borderPaint = Paint().apply {
+            color = 0xFFE0E0E0.toInt()
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
+        }
+        val rect = RectF(40f, y, 555f, y + cardHeight - 10f)
+        canvas.drawRoundRect(rect, 6f, 6f, fillPaint)
+        canvas.drawRoundRect(rect, 6f, 6f, borderPaint)
+
+        val titleBgPaint = Paint().apply {
+            color = 0xFFE8F5E9.toInt()
+            style = Paint.Style.FILL
+        }
+        canvas.drawRoundRect(RectF(40f, y, 555f, y + 24f), 6f, 6f, titleBgPaint)
+        canvas.drawRect(40f, y + 15f, 555f, y + 24f, titleBgPaint)
+
+        val labelPaint = Paint().apply {
+            color = 0xFF2E7D32.toInt()
+            textSize = 8f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAntiAlias = true
+        }
+        val txt = "PERAWATAN #${m.id} - ASET: ${m.inventoryNumber} (${assetName.uppercase()})"
+        canvas.drawText(txt, 48f, y + 15f, labelPaint)
+
+        val statusColor = when (m.status) {
+            "Selesai" -> 0xFF2E7D32.toInt()
+            "Selesai & Terverifikasi" -> 0xFF2E7D32.toInt()
+            "Dalam Pengerjaan" -> 0xFF1565C0.toInt()
+            else -> 0xFF37474F.toInt()
+        }
+        val statusBgPaint = Paint().apply {
+            color = statusColor
+            style = Paint.Style.FILL
+        }
+        canvas.drawRoundRect(RectF(460f, y + 4f, 545f, y + 20f), 3f, 3f, statusBgPaint)
+
+        val statusTextPaint = Paint().apply {
+            color = Color.WHITE
+            textSize = 7f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText(m.status, 502.5f, y + 14f, statusTextPaint)
+
+        val textPaint = TextPaint().apply {
+            color = Color.BLACK
+            textSize = 7.5f
+            isAntiAlias = true
+        }
+        val keyPaint = TextPaint().apply {
+            color = Color.GRAY
+            textSize = 7.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAntiAlias = true
+        }
+
+        var textY = y + 36f
+        fun drawField(label: String, value: String) {
+            canvas.drawText(label, 48f, textY, keyPaint)
+            val wrapLayout = StaticLayout(
+                value, textPaint, 240, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false
+            )
+            canvas.save()
+            canvas.translate(115f, textY - 7f)
+            wrapLayout.draw(canvas)
+            canvas.restore()
+            textY += wrapLayout.height + 3f
+        }
+
+        val startStr = dateFormat.format(Date(m.startTime))
+        val endStr = m.endTime?.let { dateFormat.format(Date(it)) } ?: "Belum Selesai"
+
+        drawField("Waktu Mulai:", startStr)
+        drawField("Waktu Selesai:", endStr)
+        drawField("Tindakan:", m.actionTaken)
+        drawField("Temuan Kendala:", m.issuesFound)
+        drawField("Hasil Akhir:", m.result)
+        drawField("Teknisi:", m.technician)
+
+        fun drawPhoto(photoStr: String?, label: String, photoX: Float, photoY: Float) {
+            val rectBg = RectF(photoX, photoY, photoX + 70f, photoY + 48f)
+            val rectPaint = Paint().apply {
+                color = 0xFFF5F5F5.toInt()
+                style = Paint.Style.FILL
+            }
+            val strokePaint = Paint().apply {
+                color = 0xFFE0E0E0.toInt()
+                style = Paint.Style.STROKE
+                strokeWidth = 0.5f
+            }
+            canvas.drawRect(rectBg, rectPaint)
+            canvas.drawRect(rectBg, strokePaint)
+
+            val lblPaint = Paint().apply {
+                color = Color.DKGRAY
+                textSize = 6.5f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                isAntiAlias = true
+            }
+            canvas.drawText(label, photoX + 76f, photoY + 12f, lblPaint)
+
+            val imageBitmap = decodeBase64ToBitmap(photoStr)
+            if (imageBitmap != null) {
+                val src = Rect(0, 0, imageBitmap.width, imageBitmap.height)
+                val dst = Rect((photoX + 1f).toInt(), (photoY + 1f).toInt(), (photoX + 69f).toInt(), (photoY + 47f).toInt())
+                canvas.drawBitmap(imageBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
+
+                val (_, loc, date) = parseWatermarkedPhoto(photoStr)
+                val wmPaint = Paint().apply {
+                    color = Color.WHITE
+                    textSize = 4.5f
+                    isAntiAlias = true
+                    setShadowLayer(1f, 0f, 0f, Color.BLACK)
+                }
+                canvas.drawText("${loc.take(12)}, ${date.take(10)}", photoX + 3f, photoY + 43f, wmPaint)
+            } else {
+                val emptyPaint = Paint().apply {
+                    color = Color.GRAY
+                    textSize = 6.5f
+                    isAntiAlias = true
+                    textAlign = Paint.Align.CENTER
+                }
+                canvas.drawText("No Photo", photoX + 35f, photoY + 28f, emptyPaint)
+            }
+        }
+
+        drawPhoto(m.photoBefore, "SEBELUM", 375f, y + 32f)
+        drawPhoto(m.photoAfter, "SESUDAH", 375f, y + 84f)
+        drawPhoto(m.photoUser, "PENERIMA", 375f, y + 136f)
+
+        writer.currentY += cardHeight
+    }
+
+    fun exportToPdf(context: Context, type: String): File? {
         val dateFormat = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
         val dateFileFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
         val timestamp = dateFileFormat.format(Date())
 
-        val filename: String
-        val html = StringBuilder()
-
-        // HTML Header with Excel gridlines instruction
-        html.append("<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" xmlns=\"http://www.w3.org/TR/REC-html40\">\n")
-        html.append("<head>\n")
-        html.append("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n")
-        html.append("<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Laporan IT</x:Name><x:WorksheetOptions><x:DisplayGridlines/><x:ProtectContents>True</x:ProtectContents><x:ProtectObjects>True</x:ProtectObjects><x:ProtectScenarios>True</x:ProtectScenarios></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->\n")
-        html.append("<style>\n")
-        html.append("  body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; }\n")
-        html.append("  table { border-collapse: collapse; margin: 15px 0; }\n")
-        html.append("  th { background-color: #0288D1; color: #FFFFFF; font-weight: bold; border: 1px solid #000000; padding: 10px; text-align: center; font-size: 13px; mso-protection: locked; }\n")
-        html.append("  td { border: 1px solid #B0BEC5; padding: 10px; vertical-align: middle; text-align: left; font-size: 12px; mso-protection: locked; }\n")
-        html.append("  .title-row { background-color: #E1F5FE; font-weight: bold; font-size: 16px; text-align: center; color: #01579B; padding: 15px; }\n")
-        html.append("  .sec-decl { background-color: #FFF9C4; font-weight: bold; font-size: 11px; text-align: center; padding: 8px; color: #F57F17; }\n")
-        html.append("</style>\n")
-        html.append("</head>\n")
-        html.append("<body>\n")
-
+        val writer = PdfPageWriter()
         val assetsList = allAssets.value
         val assetMap = assetsList.associateBy { it.inventoryNumber }
 
-        when (type) {
+        return when (type) {
             "assets" -> {
-                filename = "List_Inventaris_IT_$timestamp.xls"
-                html.append("<table>\n")
-                html.append("  <tr><td colspan=\"8\" class=\"title-row\"><b>DOKUMEN INVENTARIS ASET TIM IT SUPPORT</b></td></tr>\n")
-                html.append("  <tr><td colspan=\"8\" class=\"sec-decl\">SISTEM PROTEKSI SECURE RECORD VERIFIED VER.2.6 - READ-ONLY - DATA SIGNED</td></tr>\n")
-                html.append("  <tr>\n")
-                html.append("    <th>No. Inventaris</th>\n")
-                html.append("    <th>Nama Perangkat</th>\n")
-                html.append("    <th>Kategori</th>\n")
-                html.append("    <th>Lokasi</th>\n")
-                html.append("    <th>Status</th>\n")
-                html.append("    <th>Deskripsi</th>\n")
-                html.append("    <th>Tanggal Terdaftar</th>\n")
-                html.append("    <th>Kode Verifikasi Keaslian (SHA-Signature)</th>\n")
-                html.append("  </tr>\n")
+                val filename = "List_Inventaris_IT_$timestamp.pdf"
+                writer.newPage("LIST INVENTARIS ASET TIM IT SUPPORT", "Sistem Inventaris IT Hub - Resmi")
+
+                val colWidths = listOf(85f, 115f, 85f, 85f, 55f, 90f)
+                val headers = listOf("No. Inventaris", "Nama Perangkat", "Kategori", "Lokasi", "Status", "Deskripsi")
+                drawAssetRow(writer, headers, colWidths, isHeader = true)
 
                 assetsList.forEach { a ->
-                    val verificationHash = generateTamperProofHash(a.inventoryNumber, a.name, a.type, a.location, a.status)
-                    html.append("  <tr>\n")
-                    html.append("    <td>${escapeHtml(a.inventoryNumber)}</td>\n")
-                    html.append("    <td>${escapeHtml(a.name)}</td>\n")
-                    html.append("    <td>${escapeHtml(a.type)}</td>\n")
-                    html.append("    <td>${escapeHtml(a.location)}</td>\n")
-                    html.append("    <td><b>${escapeHtml(a.status)}</b></td>\n")
-                    html.append("    <td>${escapeHtml(a.description ?: "")}</td>\n")
-                    html.append("    <td>${dateFormat.format(Date(a.createdAt))}</td>\n")
-                    html.append("    <td style=\"font-family: monospace;\">$verificationHash</td>\n")
-                    html.append("  </tr>\n")
+                    val rowCells = listOf(
+                        a.inventoryNumber,
+                        a.name,
+                        a.type,
+                        a.location,
+                        a.status,
+                        a.description ?: ""
+                    )
+                    drawAssetRow(writer, rowCells, colWidths, isHeader = false)
                 }
-                html.append("</table>\n")
+                writer.saveAndClose(context, filename)
             }
             "repairs" -> {
-                filename = "Laporan_Perbaikan_IT_$timestamp.xls"
-                html.append("<table>\n")
-                html.append("  <tr><td colspan=\"17\" class=\"title-row\"><b>LAPORAN PERBAIKAN PERANGKAT TIM IT SUPPORT</b></td></tr>\n")
-                html.append("  <tr><td colspan=\"17\" class=\"sec-decl\">SISTEM PROTEKSI SECURE RECORD VERIFIED VER.2.6 - READ-ONLY - DATA SIGNED</td></tr>\n")
-                html.append("  <tr>\n")
-                html.append("    <th>ID Perbaikan</th>\n")
-                html.append("    <th>No. Inventaris</th>\n")
-                html.append("    <th>Nama Perangkat</th>\n")
-                html.append("    <th>Lokasi Perangkat</th>\n")
-                html.append("    <th>Waktu Mulai</th>\n")
-                html.append("    <th>Waktu Selesai</th>\n")
-                html.append("    <th>Kendala</th>\n")
-                html.append("    <th>Penyebab</th>\n")
-                html.append("    <th>Tindak Lanjut</th>\n")
-                html.append("    <th>Status</th>\n")
-                html.append("    <th>Alasan Hold</th>\n")
-                html.append("    <th>Estimasi</th>\n")
-                html.append("    <th>Teknisi</th>\n")
-                html.append("    <th style=\"width: 250px;\">Foto Sebelum</th>\n")
-                html.append("    <th style=\"width: 250px;\">Foto Sesudah</th>\n")
-                html.append("    <th style=\"width: 250px;\">Foto Bersama Unit</th>\n")
-                html.append("    <th style=\"width: 250px;\">Kode Verifikasi Keaslian (SHA-Signature)</th>\n")
-                html.append("  </tr>\n")
+                val filename = "Laporan_Perbaikan_IT_$timestamp.pdf"
+                writer.newPage("LAPORAN PERBAIKAN TIM IT SUPPORT", "Hanya Laporan Terverifikasi & Selesai")
 
                 val repairs = filteredRepairs.value.filter { it.status == "Selesai & Terverifikasi" }
                 repairs.forEach { r ->
-                    val endStr = r.endTime?.let { dateFormat.format(Date(it)) } ?: "Sedang Diproses/Hold"
-                    val devName = assetMap[r.inventoryNumber]?.name ?: "Perangkat Tidak Dikenal"
-                    val devLoc = assetMap[r.inventoryNumber]?.location ?: "Lokasi Tidak Tercatat"
-                    val verificationHash = generateTamperProofHash(
-                        r.id.toString(), r.inventoryNumber, r.status, r.technician, r.startTime.toString()
-                    )
-
-                    html.append("  <tr>\n")
-                    html.append("    <td>${r.id}</td>\n")
-                    html.append("    <td>${escapeHtml(r.inventoryNumber)}</td>\n")
-                    html.append("    <td>${escapeHtml(devName)}</td>\n")
-                    html.append("    <td>${escapeHtml(devLoc)}</td>\n")
-                    html.append("    <td>${dateFormat.format(Date(r.startTime))}</td>\n")
-                    html.append("    <td>${escapeHtml(endStr)}</td>\n")
-                    html.append("    <td>${escapeHtml(r.problem)}</td>\n")
-                    html.append("    <td>${escapeHtml(r.cause)}</td>\n")
-                    html.append("    <td>${escapeHtml(r.actionTaken)}</td>\n")
-                    html.append("    <td><b>${escapeHtml(r.status)}</b></td>\n")
-                    html.append("    <td>${escapeHtml(r.holdReason ?: "")}</td>\n")
-                    html.append("    <td>${escapeHtml(r.holdEstimate ?: "")}</td>\n")
-                    html.append("    <td>${escapeHtml(r.technician)}</td>\n")
-                    html.append("    <td style=\"width: 250px;\">${getEmbeddedPhotoHtml(r.photoBefore)}</td>\n")
-                    html.append("    <td style=\"width: 250px;\">${getEmbeddedPhotoHtml(r.photoAfter)}</td>\n")
-                    html.append("    <td style=\"width: 250px;\">${getEmbeddedPhotoHtml(r.photoUser)}</td>\n")
-                    html.append("    <td style=\"width: 250px; font-family: monospace; word-break: break-all; word-wrap: break-word;\">$verificationHash</td>\n")
-                    html.append("  </tr>\n")
+                    val assetName = assetMap[r.inventoryNumber]?.name ?: "Aset Tidak Dikenal"
+                    drawRepairCard(writer, r, assetName, dateFormat)
                 }
-                html.append("</table>\n")
+                writer.saveAndClose(context, filename)
             }
             "maintenances" -> {
-                filename = "Laporan_Perawatan_IT_$timestamp.xls"
-                html.append("<table>\n")
-                html.append("  <tr><td colspan=\"15\" class=\"title-row\"><b>LAPORAN PERAWATAN RUTIN TIM IT SUPPORT</b></td></tr>\n")
-                html.append("  <tr><td colspan=\"15\" class=\"sec-decl\">SISTEM PROTEKSI SECURE RECORD VERIFIED VER.2.6 - READ-ONLY - DATA SIGNED</td></tr>\n")
-                html.append("  <tr>\n")
-                html.append("    <th>ID Perawatan</th>\n")
-                html.append("    <th>No. Inventaris</th>\n")
-                html.append("    <th>Nama Perangkat</th>\n")
-                html.append("    <th>Lokasi Perangkat</th>\n")
-                html.append("    <th>Waktu Mulai</th>\n")
-                html.append("    <th>Waktu Selesai</th>\n")
-                html.append("    <th>Tindakan</th>\n")
-                html.append("    <th>Kendala Temuan</th>\n")
-                html.append("    <th>Hasil</th>\n")
-                html.append("    <th>Status</th>\n")
-                html.append("    <th>Teknisi</th>\n")
-                html.append("    <th style=\"width: 250px;\">Foto Sebelum</th>\n")
-                html.append("    <th style=\"width: 250px;\">Foto Sesudah</th>\n")
-                html.append("    <th style=\"width: 250px;\">Foto Bersama Unit</th>\n")
-                html.append("    <th style=\"width: 250px;\">Kode Verifikasi Keaslian (SHA-Signature)</th>\n")
-                html.append("  </tr>\n")
+                val filename = "Laporan_Perawatan_IT_$timestamp.pdf"
+                writer.newPage("LAPORAN PERAWATAN RUTIN TIM IT SUPPORT", "Hanya Laporan Terverifikasi & Selesai")
 
-                val maints = filteredMaintenances.value.filter { m -> m.status == "Selesai & Terverifikasi" }
+                val maints = filteredMaintenances.value.filter { it.status == "Selesai & Terverifikasi" }
                 maints.forEach { m ->
-                    val endStr = m.endTime?.let { dateFormat.format(Date(it)) } ?: "Sedang Diproses"
-                    val devName = assetMap[m.inventoryNumber]?.name ?: "Perangkat Tidak Dikenal"
-                    val devLoc = assetMap[m.inventoryNumber]?.location ?: "Lokasi Tidak Tercatat"
-                    val verificationHash = generateTamperProofHash(
-                        m.id.toString(), m.inventoryNumber, m.status, m.technician, m.startTime.toString()
-                    )
-
-                    html.append("  <tr>\n")
-                    html.append("    <td>${m.id}</td>\n")
-                    html.append("    <td>${escapeHtml(m.inventoryNumber)}</td>\n")
-                    html.append("    <td>${escapeHtml(devName)}</td>\n")
-                    html.append("    <td>${escapeHtml(devLoc)}</td>\n")
-                    html.append("    <td>${dateFormat.format(Date(m.startTime))}</td>\n")
-                    html.append("    <td>${escapeHtml(endStr)}</td>\n")
-                    html.append("    <td>${escapeHtml(m.actionTaken)}</td>\n")
-                    html.append("    <td>${escapeHtml(m.issuesFound)}</td>\n")
-                    html.append("    <td>${escapeHtml(m.result)}</td>\n")
-                    html.append("    <td><b>${escapeHtml(m.status)}</b></td>\n")
-                    html.append("    <td>${escapeHtml(m.technician)}</td>\n")
-                    html.append("    <td style=\"width: 250px;\">${getEmbeddedPhotoHtml(m.photoBefore)}</td>\n")
-                    html.append("    <td style=\"width: 250px;\">${getEmbeddedPhotoHtml(m.photoAfter)}</td>\n")
-                    html.append("    <td style=\"width: 250px;\">${getEmbeddedPhotoHtml(m.photoUser)}</td>\n")
-                    html.append("    <td style=\"width: 250px; font-family: monospace; word-break: break-all; word-wrap: break-word;\">$verificationHash</td>\n")
-                    html.append("  </tr>\n")
+                    val assetName = assetMap[m.inventoryNumber]?.name ?: "Aset Tidak Dikenal"
+                    drawMaintenanceCard(writer, m, assetName, dateFormat)
                 }
-                html.append("</table>\n")
+                writer.saveAndClose(context, filename)
             }
-            else -> return null
+            else -> null
+        }
+    }
+
+    fun exportAllLogsToExcel(context: Context): File? {
+        val dateFormat = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
+        val dateFileFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+        val timestamp = dateFileFormat.format(Date())
+        val filename = "Log_Sistem_Lengkap_IT_$timestamp.xls"
+
+        val sb = StringBuilder()
+        sb.append("<?xml version=\"1.0\"?>\n")
+        sb.append("<?mso-application progid=\"Excel.Sheet\"?>\n")
+        sb.append("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"\n")
+        sb.append(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"\n")
+        sb.append(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"\n")
+        sb.append(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"\n")
+        sb.append(" xmlns:html=\"http://www.w3.org/TR/REC-html40\">\n")
+
+        sb.append(" <Styles>\n")
+        sb.append("  <Style ss:ID=\"Default\" ss:Name=\"Normal\">\n")
+        sb.append("   <Alignment ss:Vertical=\"Bottom\"/>\n")
+        sb.append("   <Borders/>\n")
+        sb.append("   <Font ss:FontName=\"Segoe UI\" x:Family=\"Swiss\" ss:Size=\"11\" ss:Color=\"#000000\"/>\n")
+        sb.append("  </Style>\n")
+        sb.append("  <Style ss:ID=\"Title\">\n")
+        sb.append("   <Font ss:FontName=\"Segoe UI\" ss:Bold=\"1\" ss:Size=\"15\" ss:Color=\"#01579B\"/>\n")
+        sb.append("   <Interior ss:Color=\"#E1F5FE\" ss:Pattern=\"Solid\"/>\n")
+        sb.append("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>\n")
+        sb.append("  </Style>\n")
+        sb.append("  <Style ss:ID=\"SectionTitle\">\n")
+        sb.append("   <Font ss:FontName=\"Segoe UI\" ss:Bold=\"1\" ss:Size=\"13\" ss:Color=\"#0D47A1\"/>\n")
+        sb.append("   <Interior ss:Color=\"#E3F2FD\" ss:Pattern=\"Solid\"/>\n")
+        sb.append("   <Alignment ss:Horizontal=\"Left\" ss:Vertical=\"Center\"/>\n")
+        sb.append("  </Style>\n")
+        sb.append("  <Style ss:ID=\"Header\">\n")
+        sb.append("   <Font ss:FontName=\"Segoe UI\" ss:Bold=\"1\" ss:Color=\"#FFFFFF\" ss:Size=\"11\"/>\n")
+        sb.append("   <Interior ss:Color=\"#0288D1\" ss:Pattern=\"Solid\"/>\n")
+        sb.append("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>\n")
+        sb.append("   <Borders>\n")
+        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>\n")
+        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>\n")
+        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>\n")
+        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>\n")
+        sb.append("   </Borders>\n")
+        sb.append("  </Style>\n")
+        sb.append("  <Style ss:ID=\"DataCell\">\n")
+        sb.append("   <Borders>\n")
+        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#B0BEC5\"/>\n")
+        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#B0BEC5\"/>\n")
+        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#B0BEC5\"/>\n")
+        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#B0BEC5\"/>\n")
+        sb.append("   </Borders>\n")
+        sb.append("   <Alignment ss:Vertical=\"Center\" ss:WrapText=\"1\"/>\n")
+        sb.append("  </Style>\n")
+        sb.append(" </Styles>\n")
+
+        val assets = allAssets.value
+        val repairs = allRepairs.value
+        val maintenances = allMaintenances.value
+        val logs = allUpdateLogs.value
+
+        val assetNameMap = assets.associateBy { it.inventoryNumber }
+
+        fun escapeXml(str: String?): String {
+            if (str == null) return ""
+            return str.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;")
         }
 
-        html.append("</body>\n")
-        html.append("</html>\n")
+        // Sheet 1: Inventaris & Logs
+        sb.append(" <Worksheet ss:Name=\"Inventaris\">\n")
+        sb.append("  <Table>\n")
+        sb.append("   <Column ss:Width=\"115\"/>\n")
+        sb.append("   <Column ss:Width=\"150\"/>\n")
+        sb.append("   <Column ss:Width=\"115\"/>\n")
+        sb.append("   <Column ss:Width=\"115\"/>\n")
+        sb.append("   <Column ss:Width=\"115\"/>\n")
+        sb.append("   <Column ss:Width=\"160\"/>\n")
+        sb.append("   <Column ss:Width=\"130\"/>\n")
 
-        try {
-            val tempFile = File(context.cacheDir, filename)
-            tempFile.writeText(html.toString(), Charsets.UTF_8)
-            return tempFile
+        sb.append("   <Row ss:Height=\"28\">\n")
+        sb.append("    <Cell ss:MergeAcross=\"6\" ss:StyleID=\"Title\"><Data ss:Type=\"String\">DAFTAR INVENTARIS ASET Tim IT Support</Data></Cell>\n")
+        sb.append("   </Row>\n")
+        sb.append("   <Row ss:Height=\"18\">\n")
+        sb.append("    <Cell ss:MergeAcross=\"6\"><Data ss:Type=\"String\">Exported: ${dateFormat.format(Date())} | Total Aset: ${assets.size}</Data></Cell>\n")
+        sb.append("   </Row>\n")
+
+        sb.append("   <Row ss:Height=\"22\">\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">No. Inventaris</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Nama Perangkat</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Kategori</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Lokasi</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Status</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Deskripsi</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Tanggal Registrasi</Data></Cell>\n")
+        sb.append("   </Row>\n")
+
+        assets.forEach { a ->
+            sb.append("   <Row ss:Height=\"20\">\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.inventoryNumber)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.name)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.type)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.location)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.status)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.description ?: "")}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${dateFormat.format(Date(a.createdAt))}</Data></Cell>\n")
+            sb.append("   </Row>\n")
+        }
+
+        sb.append("   <Row><Cell><Data ss:Type=\"String\"></Data></Cell></Row>\n")
+        sb.append("   <Row><Cell><Data ss:Type=\"String\"></Data></Cell></Row>\n")
+
+        sb.append("   <Row ss:Height=\"25\">\n")
+        sb.append("    <Cell ss:MergeAcross=\"6\" ss:StyleID=\"SectionTitle\"><Data ss:Type=\"String\">RIWAYAT PERUBAHAN &amp; LOG UPDATE INVENTARIS</Data></Cell>\n")
+        sb.append("   </Row>\n")
+        sb.append("   <Row ss:Height=\"22\">\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Update</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">No. Inventaris</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Lokasi Lama &gt; Baru</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Status Lama &gt; Baru</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Komentar Lama</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Komentar Baru</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Sebab Rusak Permanen</Data></Cell>\n")
+        sb.append("   </Row>\n")
+
+        logs.forEach { l ->
+            sb.append("   <Row ss:Height=\"22\">\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${dateFormat.format(Date(l.updateTime))}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.inventoryNumber)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.oldLocation)} &gt; ${escapeXml(l.newLocation)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.oldStatus)} &gt; ${escapeXml(l.newStatus)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.oldDescription ?: "")}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.newDescription ?: "")}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.reasonForPermanentDamage ?: "")}</Data></Cell>\n")
+            sb.append("   </Row>\n")
+        }
+
+        sb.append("  </Table>\n")
+        sb.append(" </Worksheet>\n")
+
+        // Sheet 2: Perbaikan
+        sb.append(" <Worksheet ss:Name=\"Perbaikan\">\n")
+        sb.append("  <Table>\n")
+        sb.append("   <Column ss:Width=\"50\"/>\n")
+        sb.append("   <Column ss:Width=\"100\"/>\n")
+        sb.append("   <Column ss:Width=\"150\"/>\n")
+        sb.append("   <Column ss:Width=\"120\"/>\n")
+        sb.append("   <Column ss:Width=\"120\"/>\n")
+        sb.append("   <Column ss:Width=\"150\"/>\n")
+        sb.append("   <Column ss:Width=\"150\"/>\n")
+        sb.append("   <Column ss:Width=\"150\"/>\n")
+        sb.append("   <Column ss:Width=\"100\"/>\n")
+        sb.append("   <Column ss:Width=\"150\"/>\n")
+        sb.append("   <Column ss:Width=\"120\"/>\n")
+
+        sb.append("   <Row ss:Height=\"28\">\n")
+        sb.append("    <Cell ss:MergeAcross=\"10\" ss:StyleID=\"Title\"><Data ss:Type=\"String\">DAFTAR RIWAYAT PERBAIKAN ASET (SEMUA STATUS)</Data></Cell>\n")
+        sb.append("   </Row>\n")
+
+        sb.append("   <Row ss:Height=\"22\">\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">ID</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">No. Inventaris</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Nama Perangkat</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Mulai</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Selesai</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Kendala</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Penyebab</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Tindakan</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Status</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Alasan Hold / Estimasi</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Teknisi</Data></Cell>\n")
+        sb.append("   </Row>\n")
+
+        repairs.forEach { r ->
+            val devName = assetNameMap[r.inventoryNumber]?.name ?: "Aset Tidak Dikenal"
+            val endStr = r.endTime?.let { dateFormat.format(Date(it)) } ?: "Proses"
+            val holdStr = if (!r.holdReason.isNullOrBlank()) "${r.holdReason} (Est: ${r.holdEstimate ?: "-"})" else ""
+
+            sb.append("   <Row ss:Height=\"22\">\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"Number\">${r.id}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.inventoryNumber)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(devName)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${dateFormat.format(Date(r.startTime))}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(endStr)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.problem)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.cause)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.actionTaken)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.status)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(holdStr)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.technician)}</Data></Cell>\n")
+            sb.append("   </Row>\n")
+        }
+
+        sb.append("  </Table>\n")
+        sb.append(" </Worksheet>\n")
+
+        // Sheet 3: Perawatan
+        sb.append(" <Worksheet ss:Name=\"Perawatan\">\n")
+        sb.append("  <Table>\n")
+        sb.append("   <Column ss:Width=\"50\"/>\n")
+        sb.append("   <Column ss:Width=\"100\"/>\n")
+        sb.append("   <Column ss:Width=\"150\"/>\n")
+        sb.append("   <Column ss:Width=\"120\"/>\n")
+        sb.append("   <Column ss:Width=\"120\"/>\n")
+        sb.append("   <Column ss:Width=\"160\"/>\n")
+        sb.append("   <Column ss:Width=\"160\"/>\n")
+        sb.append("   <Column ss:Width=\"160\"/>\n")
+        sb.append("   <Column ss:Width=\"100\"/>\n")
+        sb.append("   <Column ss:Width=\"120\"/>\n")
+
+        sb.append("   <Row ss:Height=\"28\">\n")
+        sb.append("    <Cell ss:MergeAcross=\"9\" ss:StyleID=\"Title\"><Data ss:Type=\"String\">DAFTAR RIWAYAT PERAWATAN RUTIN ASET (SEMUA STATUS)</Data></Cell>\n")
+        sb.append("   </Row>\n")
+
+        sb.append("   <Row ss:Height=\"22\">\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">ID</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">No. Inventaris</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Nama Perangkat</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Mulai</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Selesai</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Tindakan Dilakukan</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Kendala Ditemukan</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Hasil / Rekomendasi</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Status</Data></Cell>\n")
+        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Teknisi</Data></Cell>\n")
+        sb.append("   </Row>\n")
+
+        maintenances.forEach { m ->
+            val devName = assetNameMap[m.inventoryNumber]?.name ?: "Aset Tidak Dikenal"
+            val endStr = m.endTime?.let { dateFormat.format(Date(it)) } ?: "Proses"
+
+            sb.append("   <Row ss:Height=\"22\">\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"Number\">${m.id}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.inventoryNumber)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(devName)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${dateFormat.format(Date(m.startTime))}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(endStr)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.actionTaken)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.issuesFound)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.result)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.status)}</Data></Cell>\n")
+            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.technician)}</Data></Cell>\n")
+            sb.append("   </Row>\n")
+        }
+
+        sb.append("  </Table>\n")
+        sb.append(" </Worksheet>\n")
+
+        sb.append("</Workbook>\n")
+
+        return try {
+            val file = File(context.cacheDir, filename)
+            file.writeText(sb.toString(), Charsets.UTF_8)
+            file
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
+            null
         }
     }
 
@@ -603,10 +1199,12 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 "${context.packageName}.provider",
                 file
             )
+            val isPdf = file.name.endsWith(".pdf")
             val isXls = file.name.endsWith(".xls")
             val isZip = file.name.endsWith(".zip")
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = when {
+                    isPdf -> "application/pdf"
                     isXls -> "application/vnd.ms-excel"
                     isZip -> "application/zip"
                     else -> "text/comma-separated-values"
@@ -616,9 +1214,10 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             val titleText = when {
-                isXls -> "Ekspor Laporan Excel Lengkap + Foto Bukti"
+                isPdf -> "Bagikan Laporan Resmi PDF"
+                isXls -> "Bagikan Log Sistem Lengkap (Excel)"
                 isZip -> "Ekspor Laporan Lengkap + Foto (Arsip ZIP)"
-                else -> "Ekspor Data Ke Excel (CSV) [READ-ONLY PROTECTED]"
+                else -> "Ekspor Data [READ-ONLY]"
             }
             context.startActivity(Intent.createChooser(intent, titleText))
         } catch (e: Exception) {

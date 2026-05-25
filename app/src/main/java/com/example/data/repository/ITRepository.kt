@@ -393,6 +393,39 @@ class ITRepository(private val dao: InventoryDao) {
         }
     }
 
+    val allUpdateLogs: Flow<List<AssetUpdateLog>> = if (isFirebaseEnabled && firestore != null) {
+        callbackFlow {
+            val listener = firestore!!.collection("asset_updates")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    if (snapshot != null) {
+                        val list = snapshot.documents.mapNotNull { doc ->
+                            try {
+                                AssetUpdateLog(
+                                    id = doc.getLong("id")?.toInt() ?: doc.id.hashCode(),
+                                    inventoryNumber = doc.getString("inventoryNumber") ?: "",
+                                    updateTime = doc.getLong("updateTime") ?: 0L,
+                                    oldLocation = doc.getString("oldLocation") ?: "",
+                                    newLocation = doc.getString("newLocation") ?: "",
+                                    oldStatus = doc.getString("oldStatus") ?: "",
+                                    newStatus = doc.getString("newStatus") ?: "",
+                                    oldDescription = doc.getString("oldDescription"),
+                                    newDescription = doc.getString("newDescription"),
+                                    reasonForPermanentDamage = doc.getString("reasonForPermanentDamage")
+                                )
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }.sortedByDescending { it.updateTime }
+                        trySend(list)
+                    }
+                }
+            awaitClose { listener.remove() }
+        }
+    } else {
+        dao.getAllUpdateLogs()
+    }
+
     // --- User Operations ---
     val allUsers: Flow<List<User>> = dao.getAllUsers()
 

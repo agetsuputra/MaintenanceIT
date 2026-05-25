@@ -544,7 +544,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 onAddAssetClick = { currentSubScreen = SubScreen.AddAsset },
                                 onAssetClick = { asset -> showingAssetDetail = asset },
                                 onExportClick = {
-                                    val f = viewModel.exportToExcel(context, "assets")
+                                    val f = viewModel.exportToPdf(context, "assets")
                                     if (f != null) {
                                         viewModel.shareExportFile(context, f)
                                     } else {
@@ -582,7 +582,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 onRepairClick = { showingRepairDetail = it },
                                 onAddRepairClick = { currentSubScreen = SubScreen.AddRepair },
                                 onExportClick = {
-                                    val f = viewModel.exportToExcel(context, "repairs")
+                                    val f = viewModel.exportToPdf(context, "repairs")
                                     if (f != null) {
                                         viewModel.shareExportFile(context, f)
                                     } else {
@@ -626,7 +626,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 onMaintClick = { showingMaintenanceDetail = it },
                                 onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance },
                                 onExportClick = {
-                                    val f = viewModel.exportToExcel(context, "maintenances")
+                                    val f = viewModel.exportToPdf(context, "maintenances")
                                     if (f != null) {
                                         viewModel.shareExportFile(context, f)
                                     } else {
@@ -670,6 +670,14 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         onDeleteUser = { user ->
                             viewModel.deleteUser(user) {
                                 Toast.makeText(context, "User berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onExportAllLogs = {
+                            val f = viewModel.exportAllLogsToExcel(context)
+                            if (f != null) {
+                                viewModel.shareExportFile(context, f)
+                            } else {
+                                Toast.makeText(context, "Ekspor log sistem gagal!", Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
@@ -4725,7 +4733,8 @@ fun showBiometricPrompt(
 fun UserManagementScreen(
     users: List<com.example.data.model.User>,
     onSaveUser: (com.example.data.model.User) -> Unit,
-    onDeleteUser: (com.example.data.model.User) -> Unit
+    onDeleteUser: (com.example.data.model.User) -> Unit,
+    onExportAllLogs: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as? androidx.fragment.app.FragmentActivity
@@ -4837,6 +4846,25 @@ fun UserManagementScreen(
                     }
                 }
             }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Button(
+            onClick = onExportAllLogs,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .testTag("export_all_logs_button"),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF1B5E20),
+                contentColor = Color.White
+            )
+        ) {
+            Icon(Icons.Default.Share, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Ekspor Semua Log Sistem Lengkap (.XLS)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
         }
     }
 
