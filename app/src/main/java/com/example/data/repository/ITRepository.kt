@@ -19,9 +19,9 @@ class ITRepository(private val dao: InventoryDao) {
 
     // Check if Firebase settings are valid and active
     val isFirebaseEnabled: Boolean by lazy {
-        val apiKey = try { BuildConfig.FIREBASE_API_KEY } catch (e: Exception) { "" }
-        val appId = try { BuildConfig.FIREBASE_APPLICATION_ID } catch (e: Exception) { "" }
-        val projectId = try { BuildConfig.FIREBASE_PROJECT_ID } catch (e: Exception) { "" }
+        val apiKey = try { BuildConfig.FIREBASE_API_KEY } catch (e: Throwable) { "" }
+        val appId = try { BuildConfig.FIREBASE_APPLICATION_ID } catch (e: Throwable) { "" }
+        val projectId = try { BuildConfig.FIREBASE_PROJECT_ID } catch (e: Throwable) { "" }
         
         apiKey.isNotBlank() && apiKey != "YOUR_FIREBASE_API_KEY" &&
         appId.isNotBlank() && appId != "YOUR_FIREBASE_APPLICATION_ID" &&
@@ -32,7 +32,7 @@ class ITRepository(private val dao: InventoryDao) {
         if (isFirebaseEnabled) {
             try {
                 FirebaseFirestore.getInstance()
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 null
             }
         } else {
@@ -41,7 +41,7 @@ class ITRepository(private val dao: InventoryDao) {
     }
 
     // Live Stream of Assets
-    val allAssets: Flow<List<Asset>> = if (isFirebaseEnabled) {
+    val allAssets: Flow<List<Asset>> = if (isFirebaseEnabled && firestore != null) {
         callbackFlow {
             val listener = firestore?.collection("assets")
                 ?.orderBy("createdAt", Query.Direction.DESCENDING)
@@ -77,7 +77,7 @@ class ITRepository(private val dao: InventoryDao) {
     }
 
     // Live Stream of Repairs
-    val allRepairs: Flow<List<Repair>> = if (isFirebaseEnabled) {
+    val allRepairs: Flow<List<Repair>> = if (isFirebaseEnabled && firestore != null) {
         callbackFlow {
             val listener = firestore?.collection("repairs")
                 ?.orderBy("startTime", Query.Direction.DESCENDING)
@@ -118,7 +118,7 @@ class ITRepository(private val dao: InventoryDao) {
     }
 
     // Live Stream of Maintenances
-    val allMaintenances: Flow<List<Maintenance>> = if (isFirebaseEnabled) {
+    val allMaintenances: Flow<List<Maintenance>> = if (isFirebaseEnabled && firestore != null) {
         callbackFlow {
             val listener = firestore?.collection("maintenances")
                 ?.orderBy("startTime", Query.Direction.DESCENDING)
@@ -337,7 +337,7 @@ class ITRepository(private val dao: InventoryDao) {
 
     // --- Asset Update Log Operations ---
     fun getUpdateLogsForAsset(invNum: String): Flow<List<AssetUpdateLog>> {
-        return if (isFirebaseEnabled) {
+        return if (isFirebaseEnabled && firestore != null) {
             callbackFlow {
                 val listener = firestore?.collection("asset_updates")
                     ?.whereEqualTo("inventoryNumber", invNum)
