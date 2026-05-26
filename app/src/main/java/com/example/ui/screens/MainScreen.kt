@@ -150,6 +150,36 @@ fun addWatermarkToBitmap(bitmap: Bitmap, location: String, dateStr: String): Bit
     }
 }
 
+fun getDeviceLocation(context: android.content.Context, fallbackLocation: String): String {
+    val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as? android.location.LocationManager
+    if (locationManager != null) {
+        try {
+            val hasCoarse = androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            
+            val hasFine = androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            
+            if (hasCoarse || hasFine) {
+                val providers = locationManager.getProviders(true)
+                for (provider in providers) {
+                    val loc = locationManager.getLastKnownLocation(provider)
+                    if (loc != null) {
+                        return "Lat: ${String.format(Locale.US, "%.4f", loc.latitude)}, Lon: ${String.format(Locale.US, "%.4f", loc.longitude)} (GPS) - $fallbackLocation"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    return fallbackLocation
+}
+
 fun compressAndWatermarkBitmap(
     bitmap: Bitmap,
     location: String,
@@ -266,9 +296,19 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var currentSubScreen by remember { mutableStateOf(SubScreen.List) }
     var showSplash by remember { mutableStateOf(true) }
 
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ -> }
+
     // Seed preview database if empty and trigger splash fadeout
     LaunchedEffect(Unit) {
         viewModel.seedSampleDataIfEmpty()
+        locationPermissionLauncher.launch(
+            arrayOf(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
         delay(1500)
         showSplash = false
     }
@@ -297,9 +337,10 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     ) { bitmap ->
         if (bitmap != null) {
             val currentDateStr = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()).format(Date())
+            val liveLoc = getDeviceLocation(context, "IT Office Desk")
             val compressedBase64 = compressAndWatermarkBitmap(
                 bitmap = bitmap,
-                location = "Kamera Perangkat IT Support",
+                location = liveLoc,
                 dateStr = currentDateStr
             )
             currentCameraCallback?.invoke(compressedBase64)
@@ -575,6 +616,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         SubScreen.List -> {
                             RepairsScreen(
                                 repairs = filteredRepairs,
+                                assets = assets,
                                 startDate = startDate,
                                 endDate = endDate,
                                 onStartDateChange = { viewModel.filterStartDate.value = it },
@@ -619,6 +661,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         SubScreen.List -> {
                             MaintenanceScreen(
                                 maintenances = filteredMaintenances,
+                                assets = assets,
                                 startDate = startDate,
                                 endDate = endDate,
                                 onStartDateChange = { viewModel.filterStartDate.value = it },
@@ -811,8 +854,8 @@ fun DashboardScreen(
     val totalAssets = assets.size
     val activeAssets = assets.count { it.status == "Aktif" }
     val brokenAssets = assets.count { it.status == "Rusak Permanen" }
-    val holdRepairs = assets.count { it.status == "Hold" }
-    val maintenanceAssets = 0
+    val holdRepairs = repairs.count { it.status == "Hold" }
+    val maintenanceAssets = assets.count { it.status == "Perawatan" }
 
     LazyColumn(
         modifier = Modifier
@@ -933,7 +976,7 @@ fun DashboardScreen(
                 ) {
                     Icon(Icons.Default.Share, contentDescription = "Ekspor")
                     Spacer(Modifier.width(8.dp))
-                    Text("Ekspor Excel")
+                    Text("Export PDF")
                 }
             }
         }
@@ -1916,6 +1959,7 @@ fun RowValue(label: String, value: String) {
 @Composable
 fun RepairsScreen(
     repairs: List<Repair>,
+    assets: List<Asset>,
     startDate: Long,
     endDate: Long,
     onStartDateChange: (Long) -> Unit,
@@ -2056,11 +2100,19 @@ fun RepairsScreen(
             ) {
                 Icon(Icons.Default.Share, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
-                Text("Ekspor CSV", fontSize = 12.sp)
+                Text("Export PDF", fontSize = 12.sp)
             }
         }
 
         Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "Daftar Perbaikan (${repairs.size})",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
         // Repair list logic
         if (repairs.isEmpty()) {
@@ -2081,7 +2133,7 @@ fun RepairsScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(repairs, key = { it.id }) { repair ->
-                    RepairItemCard(repair = repair, onClick = { onRepairClick(repair) })
+                    RepairItemCard(repair = repair, assets = assets, onClick = { onRepairClick(repair) })
                 }
             }
         }
@@ -2089,9 +2141,10 @@ fun RepairsScreen(
 }
 
 @Composable
-fun RepairItemCard(repair: Repair, onClick: () -> Unit) {
+fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
     val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(repair.startTime))
     val isHold = repair.status == "Hold"
+    val matchedAsset = assets.find { it.inventoryNumber == repair.inventoryNumber }
 
     Card(
         modifier = Modifier
@@ -2102,14 +2155,22 @@ fun RepairItemCard(repair: Repair, onClick: () -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = matchedAsset?.name ?: "Perangkat Tidak Dikenal",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(2.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = repair.inventoryNumber,
-                    fontWeight = FontWeight.Bold,
+                    text = "ID: ${repair.inventoryNumber}",
+                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
                 // Status Badge
@@ -2610,13 +2671,25 @@ fun RepairDetailDialog(
 
     var showingPinVerification by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+    val matchedAsset = viewModel.allAssets.collectAsStateWithLifecycle(emptyList()).value
+        .find { it.inventoryNumber == repair.inventoryNumber }
+    val assetLocation = matchedAsset?.location ?: "Gedung IT"
+
     if (showingPinVerification) {
         PinVerificationDialog(
             viewModel = viewModel,
             onDismiss = { showingPinVerification = false },
             onPinCorrect = {
                 showingPinVerification = false
-                onVerifyRepair(repair)
+                val finalRepair = repair.copy(
+                    status = "Selesai & Terverifikasi",
+                    cause = localCause.ifBlank { repair.cause },
+                    actionTaken = localActionTaken.ifBlank { repair.actionTaken },
+                    photoAfter = localPhotoAfter ?: repair.photoAfter,
+                    photoUser = localPhotoUser ?: repair.photoUser
+                )
+                onVerifyRepair(finalRepair)
             }
         )
     }
@@ -2664,7 +2737,8 @@ fun RepairDetailDialog(
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(0.4f))) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text("Aset yang Diperbaiki:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(repair.inventoryNumber, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                                Text(matchedAsset?.name ?: "Perangkat Tidak Dikenal", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                                Text("No. Inventaris: ${repair.inventoryNumber}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.height(8.dp))
                                 RowValue("Waktu Mulai", dateFormatter.format(Date(repair.startTime)))
                                 RowValue("Waktu Selesai", repair.endTime?.let { dateFormatter.format(Date(it)) } ?: "Masih Tertunda (${repair.status})")
@@ -2784,7 +2858,7 @@ fun RepairDetailDialog(
                                         label = { Text("Penyebab Akhir *Wajib") },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
+                                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent)
                                     )
 
                                     OutlinedTextField(
@@ -2793,14 +2867,14 @@ fun RepairDetailDialog(
                                         label = { Text("Solusi / Tindak Lanjut *Wajib") },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
+                                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent)
                                     )
 
                                     // Capture Photo After Slot
                                     Text("📸 Ambil Foto Sesudah (After) *Wajib", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                     if (!localPhotoAfter.isNullOrBlank()) {
                                         Box(modifier = Modifier.fillMaxWidth().height(130.dp)) {
-                                            WatermarkedAsyncImage(localPhotoAfter, "IT Desk", modifier = Modifier.fillMaxSize())
+                                            WatermarkedAsyncImage(localPhotoAfter, assetLocation, modifier = Modifier.fillMaxSize())
                                             IconButton(
                                                 onClick = { localPhotoAfter = null },
                                                 modifier = Modifier
@@ -2812,7 +2886,7 @@ fun RepairDetailDialog(
                                         }
                                     } else {
                                         Button(
-                                            onClick = { onOpenCamera { photo -> localPhotoAfter = "$photo|||Pekerjaan Selesai|||$currentDateStr" } },
+                                            onClick = { onOpenCamera { photo -> localPhotoAfter = "$photo|||${getDeviceLocation(context, "Selesai - " + assetLocation)}|||$currentDateStr" } },
                                             modifier = Modifier.fillMaxWidth(),
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
                                         ) {
@@ -2826,7 +2900,7 @@ fun RepairDetailDialog(
                                     Text("📸 Ambil Foto Bersama Unit *Wajib", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                     if (!localPhotoUser.isNullOrBlank()) {
                                         Box(modifier = Modifier.fillMaxWidth().height(130.dp)) {
-                                            WatermarkedAsyncImage(localPhotoUser, "IT Desk", modifier = Modifier.fillMaxSize())
+                                            WatermarkedAsyncImage(localPhotoUser, assetLocation, modifier = Modifier.fillMaxSize())
                                             IconButton(
                                                 onClick = { localPhotoUser = null },
                                                 modifier = Modifier
@@ -2838,7 +2912,7 @@ fun RepairDetailDialog(
                                         }
                                     } else {
                                         Button(
-                                            onClick = { onOpenCamera { photo -> localPhotoUser = "$photo|||Verifikasi Unit|||$currentDateStr" } },
+                                            onClick = { onOpenCamera { photo -> localPhotoUser = "$photo|||${getDeviceLocation(context, "Verifikasi - " + assetLocation)}|||$currentDateStr" } },
                                             modifier = Modifier.fillMaxWidth(),
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                         ) {
@@ -2962,6 +3036,7 @@ fun RepairDetailDialog(
 @Composable
 fun MaintenanceScreen(
     maintenances: List<Maintenance>,
+    assets: List<Asset>,
     startDate: Long,
     endDate: Long,
     onStartDateChange: (Long) -> Unit,
@@ -3004,7 +3079,7 @@ fun MaintenanceScreen(
             .testTag("maintenances_screen")
     ) {
         Text(
-            "Jadwal Perawatan Rutin Perangkat",
+            "Perawatan Rutin Perangkat",
             fontWeight = FontWeight.ExtraBold,
             style = MaterialTheme.typography.titleLarge,
             color = Color(0xFF0277BD)
@@ -3101,11 +3176,19 @@ fun MaintenanceScreen(
             ) {
                 Icon(Icons.Default.Share, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
-                Text("Ekspor CSV", fontSize = 12.sp)
+                Text("Export PDF", fontSize = 12.sp)
             }
         }
 
         Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "Daftar Perawatan Rutin (${maintenances.size})",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
         if (maintenances.isEmpty()) {
             Box(
@@ -3125,7 +3208,7 @@ fun MaintenanceScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(maintenances, key = { it.id }) { maint ->
-                    MaintItemCard(maintenance = maint, onClick = { onMaintClick(maint) })
+                    MaintItemCard(maintenance = maint, assets = assets, onClick = { onMaintClick(maint) })
                 }
             }
         }
@@ -3133,8 +3216,9 @@ fun MaintenanceScreen(
 }
 
 @Composable
-fun MaintItemCard(maintenance: Maintenance, onClick: () -> Unit) {
+fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> Unit) {
     val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(maintenance.startTime))
+    val matchedAsset = assets.find { it.inventoryNumber == maintenance.inventoryNumber }
 
     Card(
         modifier = Modifier
@@ -3145,14 +3229,22 @@ fun MaintItemCard(maintenance: Maintenance, onClick: () -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = matchedAsset?.name ?: "Perangkat Tidak Dikenal",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(2.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = maintenance.inventoryNumber,
-                    fontWeight = FontWeight.Bold,
+                    text = "ID: ${maintenance.inventoryNumber}",
+                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.labelMedium,
                     color = Color(0xFF0277BD)
                 )
                 val statusColor = when (maintenance.status) {
@@ -3606,13 +3698,26 @@ fun MaintenanceDetailDialog(
 
     var showingPinVerification by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+    val matchedAsset = viewModel.allAssets.collectAsStateWithLifecycle(emptyList()).value
+        .find { it.inventoryNumber == maintenance.inventoryNumber }
+    val assetLocation = matchedAsset?.location ?: "Gedung IT"
+
     if (showingPinVerification) {
         PinVerificationDialog(
             viewModel = viewModel,
             onDismiss = { showingPinVerification = false },
             onPinCorrect = {
                 showingPinVerification = false
-                onVerifyMaintenance(maintenance)
+                val finalMaint = maintenance.copy(
+                    status = "Selesai & Terverifikasi",
+                    actionTaken = localActionTaken.ifBlank { maintenance.actionTaken },
+                    issuesFound = localIssuesFound.ifBlank { maintenance.issuesFound },
+                    result = localResult.ifBlank { maintenance.result },
+                    photoAfter = localPhotoAfter ?: maintenance.photoAfter,
+                    photoUser = localPhotoUser ?: maintenance.photoUser
+                )
+                onVerifyMaintenance(finalMaint)
             }
         )
     }
@@ -3761,7 +3866,7 @@ fun MaintenanceDetailDialog(
                                         placeholder = { Text("Tindakan pembersihan, reparasi kecil, dll.") },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
+                                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent)
                                     )
 
                                     OutlinedTextField(
@@ -3770,7 +3875,7 @@ fun MaintenanceDetailDialog(
                                         label = { Text("Kendala Ditemukan (Opsional)") },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
+                                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent)
                                     )
 
                                     OutlinedTextField(
@@ -3779,14 +3884,14 @@ fun MaintenanceDetailDialog(
                                         label = { Text("Hasil Perawatan / Hasil Akhir") },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
+                                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent)
                                     )
 
                                     // Capture photo after
                                     Text("📸 Ambil Foto Sesudah (After) *Wajib", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                     if (!localPhotoAfter.isNullOrBlank()) {
                                         Box(modifier = Modifier.fillMaxWidth().height(130.dp)) {
-                                            WatermarkedAsyncImage(localPhotoAfter, "IT Desk", modifier = Modifier.fillMaxSize())
+                                            WatermarkedAsyncImage(localPhotoAfter, assetLocation, modifier = Modifier.fillMaxSize())
                                             IconButton(
                                                 onClick = { localPhotoAfter = null },
                                                 modifier = Modifier
@@ -3798,7 +3903,7 @@ fun MaintenanceDetailDialog(
                                         }
                                     } else {
                                         Button(
-                                            onClick = { onOpenCamera { photo -> localPhotoAfter = "$photo|||Perawatan Selesai|||$currentDateStr" } },
+                                            onClick = { onOpenCamera { photo -> localPhotoAfter = "$photo|||${getDeviceLocation(context, "Selesai - " + assetLocation)}|||$currentDateStr" } },
                                             modifier = Modifier.fillMaxWidth(),
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
                                         ) {
@@ -3812,7 +3917,7 @@ fun MaintenanceDetailDialog(
                                     Text("📸 Ambil Foto Bersama Unit *Wajib", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                     if (!localPhotoUser.isNullOrBlank()) {
                                         Box(modifier = Modifier.fillMaxWidth().height(130.dp)) {
-                                            WatermarkedAsyncImage(localPhotoUser, "IT Desk", modifier = Modifier.fillMaxSize())
+                                            WatermarkedAsyncImage(localPhotoUser, assetLocation, modifier = Modifier.fillMaxSize())
                                             IconButton(
                                                 onClick = { localPhotoUser = null },
                                                 modifier = Modifier
@@ -3824,7 +3929,7 @@ fun MaintenanceDetailDialog(
                                         }
                                     } else {
                                         Button(
-                                            onClick = { onOpenCamera { photo -> localPhotoUser = "$photo|||Verifikasi Unit|||$currentDateStr" } },
+                                            onClick = { onOpenCamera { photo -> localPhotoUser = "$photo|||${getDeviceLocation(context, "Verifikasi - " + assetLocation)}|||$currentDateStr" } },
                                             modifier = Modifier.fillMaxWidth(),
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                         ) {
