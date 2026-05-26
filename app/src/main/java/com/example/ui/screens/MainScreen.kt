@@ -59,6 +59,7 @@ import com.example.data.model.Maintenance
 import com.example.data.model.Repair
 import com.example.ui.viewmodel.ITViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.example.R
@@ -374,6 +375,10 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var currentTab by remember { mutableStateOf(AppTab.Dashboard) }
     var currentSubScreen by remember { mutableStateOf(SubScreen.List) }
     var showSplash by remember { mutableStateOf(true) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -509,320 +514,467 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
             currentUserRole = role
         })
     } else {
-        Scaffold(
-            modifier = modifier.testTag("main_screen_scaffold"),
-        topBar = {
-            TopAppBar(
-                title = {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier.width(300.dp),
+                    drawerContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(24.dp))
                     Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .padding(end = 10.dp)
-                                .size(36.dp)
-                                .background(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(8.dp)
-                                ),
+                                .size(40.dp)
+                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
                                 painter = painterResource(id = R.drawable.app_logo),
                                 contentDescription = "Logo",
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(26.dp)
                             )
                         }
+                        Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
                                 "IT Support Service",
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                "Record & Maintenance Hub",
+                                "Record & Maintenance",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                },
-                actions = {
-                    IconButton(
+                    Divider(modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp))
+                    
+                    NavigationDrawerItem(
+                        label = { Text("Dasbor & Aset", fontWeight = FontWeight.SemiBold) },
+                        selected = currentTab == AppTab.Dashboard,
                         onClick = {
-                            viewModel.seedSampleDataIfEmpty()
-                            Toast.makeText(context, "Data sample berhasil ditambahkan jika kosong!", Toast.LENGTH_SHORT).show()
+                            currentTab = AppTab.Dashboard
+                            currentSubScreen = SubScreen.List
+                            scope.launch { drawerState.close() }
                         },
-                        modifier = Modifier.testTag("btn_seed")
+                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                        modifier = Modifier
+                            .padding(NavigationDrawerItemDefaults.ItemPadding)
+                            .testTag("drawer_menu_dashboard")
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    NavigationDrawerItem(
+                        label = { Text("Perbaikan", fontWeight = FontWeight.SemiBold) },
+                        selected = currentTab == AppTab.Perbaikan,
+                        onClick = {
+                            currentTab = AppTab.Perbaikan
+                            currentSubScreen = SubScreen.List
+                            scope.launch { drawerState.close() }
+                        },
+                        icon = { Icon(Icons.Default.Build, contentDescription = null) },
+                        modifier = Modifier
+                            .padding(NavigationDrawerItemDefaults.ItemPadding)
+                            .testTag("drawer_menu_perbaikan")
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    NavigationDrawerItem(
+                        label = { Text("Perawatan Rutin", fontWeight = FontWeight.SemiBold) },
+                        selected = currentTab == AppTab.Perawatan,
+                        onClick = {
+                            currentTab = AppTab.Perawatan
+                            currentSubScreen = SubScreen.List
+                            scope.launch { drawerState.close() }
+                        },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        modifier = Modifier
+                            .padding(NavigationDrawerItemDefaults.ItemPadding)
+                            .testTag("drawer_menu_perawatan")
+                    )
+                }
+            },
+            gesturesEnabled = true
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Scaffold(
+                    modifier = modifier.testTag("main_screen_scaffold")
+                ) { innerPadding ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        color = MaterialTheme.colorScheme.background
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Seed Sample Data")
-                    }
-
-                    var userMenuExpanded by remember { mutableStateOf(false) }
-                    Box {
-                        IconButton(
-                            onClick = { userMenuExpanded = true },
-                            modifier = Modifier.testTag("btn_user_profile")
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = currentUsername.take(1).uppercase(),
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            if (currentSubScreen == SubScreen.List) {
+                                Spacer(modifier = Modifier.statusBarsPadding().height(68.dp))
+                            }
+                            when (currentTab) {
+                                AppTab.Dashboard -> {
+                                    when (currentSubScreen) {
+                                        SubScreen.List -> {
+                                            DashboardScreen(
+                                                assets = assets,
+                                                repairs = repairs,
+                                                isFirebaseEnabled = viewModel.isFirebaseEnabled,
+                                                onAddAssetClick = { currentSubScreen = SubScreen.AddAsset },
+                                                onAssetClick = { asset -> showingAssetDetail = asset },
+                                                onExportClick = {
+                                                    val f = viewModel.exportToPdf(context, "assets")
+                                                    if (f != null) {
+                                                        viewModel.shareExportFile(context, f)
+                                                    } else {
+                                                        Toast.makeText(context, "Ekspor gagal!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                },
+                                                onOpenScanner = { callback -> showingBarcodeScanner = callback },
+                                                searchQuery = searchQuery
+                                            )
+                                        }
+                                        SubScreen.AddAsset -> {
+                                            AddAssetForm(
+                                                onSave = { asset ->
+                                                    viewModel.saveAsset(asset) {
+                                                        currentSubScreen = SubScreen.List
+                                                        Toast.makeText(context, "Aset berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                },
+                                                onCancel = { currentSubScreen = SubScreen.List },
+                                                assetList = assets,
+                                                onOpenScanner = { callback -> showingBarcodeScanner = callback }
+                                            )
+                                        }
+                                        else -> {}
+                                    }
+                                }
+                                AppTab.Perbaikan -> {
+                                    when (currentSubScreen) {
+                                        SubScreen.List -> {
+                                            RepairsScreen(
+                                                repairs = filteredRepairs,
+                                                assets = assets,
+                                                startDate = startDate,
+                                                endDate = endDate,
+                                                onStartDateChange = { viewModel.filterStartDate.value = it },
+                                                onEndDateChange = { viewModel.filterEndDate.value = it },
+                                                onRepairClick = { showingRepairDetail = it },
+                                                onAddRepairClick = { currentSubScreen = SubScreen.AddRepair },
+                                                onExportClick = {
+                                                    val f = viewModel.exportToPdf(context, "repairs")
+                                                    if (f != null) {
+                                                        viewModel.shareExportFile(context, f)
+                                                    } else {
+                                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            )
+                                        }
+                                        SubScreen.AddRepair -> {
+                                            AddRepairForm(
+                                                assetList = assets,
+                                                onSave = { repair ->
+                                                    viewModel.saveRepair(repair) {
+                                                        currentSubScreen = SubScreen.List
+                                                        prefilledInventoryNumber = null
+                                                        Toast.makeText(context, "Perbaikan berhasil didaftarkan!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                },
+                                                onCancel = { 
+                                                    currentSubScreen = SubScreen.List
+                                                    prefilledInventoryNumber = null
+                                                },
+                                                onOpenScanner = { callback -> showingBarcodeScanner = callback },
+                                                onOpenCamera = systemCameraOpener,
+                                                initialInventoryNumber = prefilledInventoryNumber,
+                                                currentUser = currentUsername
+                                            )
+                                        }
+                                        else -> {}
+                                    }
+                                }
+                                AppTab.Perawatan -> {
+                                    when (currentSubScreen) {
+                                        SubScreen.List -> {
+                                            MaintenanceScreen(
+                                                maintenances = filteredMaintenances,
+                                                assets = assets,
+                                                startDate = startDate,
+                                                endDate = endDate,
+                                                onStartDateChange = { viewModel.filterStartDate.value = it },
+                                                onEndDateChange = { viewModel.filterEndDate.value = it },
+                                                onMaintClick = { showingMaintenanceDetail = it },
+                                                onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance },
+                                                onExportClick = {
+                                                    val f = viewModel.exportToPdf(context, "maintenances")
+                                                    if (f != null) {
+                                                        viewModel.shareExportFile(context, f)
+                                                    } else {
+                                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            )
+                                        }
+                                        SubScreen.AddMaintenance -> {
+                                            AddMaintenanceForm(
+                                                assetList = assets,
+                                                onSave = { maint ->
+                                                    viewModel.saveMaintenance(maint) {
+                                                        currentSubScreen = SubScreen.List
+                                                        prefilledInventoryNumber = null
+                                                        Toast.makeText(context, "Pencatatan perawatan rutin disimpan!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                },
+                                                onCancel = { 
+                                                    currentSubScreen = SubScreen.List
+                                                    prefilledInventoryNumber = null
+                                                },
+                                                onOpenScanner = { callback -> showingBarcodeScanner = callback },
+                                                onOpenCamera = systemCameraOpener,
+                                                initialInventoryNumber = prefilledInventoryNumber,
+                                                currentUser = currentUsername
+                                            )
+                                        }
+                                        else -> {}
+                                    }
+                                }
+                                AppTab.UserManagement -> {
+                                    val userListState = viewModel.allUsers.collectAsStateWithLifecycle(emptyList())
+                                    UserManagementScreen(
+                                        users = userListState.value,
+                                        onSaveUser = { user ->
+                                            viewModel.saveUser(user) {
+                                                Toast.makeText(context, "User berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onDeleteUser = { user ->
+                                            viewModel.deleteUser(user) {
+                                                Toast.makeText(context, "User berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onExportAllLogs = {
+                                            val f = viewModel.exportAllLogsToExcel(context)
+                                            if (f != null) {
+                                                viewModel.shareExportFile(context, f)
+                                            } else {
+                                                Toast.makeText(context, "Ekspor log sistem gagal!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     )
                                 }
                             }
                         }
-                        DropdownMenu(
-                            expanded = userMenuExpanded,
-                            onDismissRequest = { userMenuExpanded = false }
-                        ) {
-                            Text(
-                                text = "Halo, $currentUsername!",
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = currentUserRole,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                            Divider(modifier = Modifier.padding(vertical = 4.dp))
-                            DropdownMenuItem(
-                                text = { Text("Log Out") },
-                                onClick = {
-                                    currentUsername = ""
-                                    currentUserRole = ""
-                                    userMenuExpanded = false
-                                    currentTab = AppTab.Dashboard
-                                    currentSubScreen = SubScreen.List
-                                },
-                                leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null) }
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-                )
-            )
-        },
-        bottomBar = {
-            NavigationBar(
-                modifier = Modifier.testTag("main_navigation_bar"),
-                tonalElevation = 8.dp
-            ) {
-                NavigationBarItem(
-                    selected = currentTab == AppTab.Dashboard,
-                    onClick = {
-                        currentTab = AppTab.Dashboard
-                        currentSubScreen = SubScreen.List
-                    },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Dasbor") },
-                    label = { Text("Dasbor & Aset", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.testTag("nav_tab_dashboard")
-                )
-                NavigationBarItem(
-                    selected = currentTab == AppTab.Perbaikan,
-                    onClick = {
-                        currentTab = AppTab.Perbaikan
-                        currentSubScreen = SubScreen.List
-                    },
-                    icon = { Icon(Icons.Default.Build, contentDescription = "Perbaikan") },
-                    label = { Text("Perbaikan", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.testTag("nav_tab_perbaikan")
-                )
-                NavigationBarItem(
-                    selected = currentTab == AppTab.Perawatan,
-                    onClick = {
-                        currentTab = AppTab.Perawatan
-                        currentSubScreen = SubScreen.List
-                    },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Perawatan") },
-                    label = { Text("Rutin", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.testTag("nav_tab_perawatan")
-                )
-                NavigationBarItem(
-                    selected = currentTab == AppTab.UserManagement,
-                    onClick = {
-                        currentTab = AppTab.UserManagement
-                        currentSubScreen = SubScreen.List
-                    },
-                    icon = { Icon(Icons.Default.ManageAccounts, contentDescription = "Manajemen User") },
-                    label = { Text("User", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.testTag("nav_tab_users")
-                )
-            }
-        }
-    ) { innerPadding ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            when (currentTab) {
-                AppTab.Dashboard -> {
-                    when (currentSubScreen) {
-                        SubScreen.List -> {
-                            DashboardScreen(
-                                assets = assets,
-                                repairs = repairs,
-                                isFirebaseEnabled = viewModel.isFirebaseEnabled,
-                                onAddAssetClick = { currentSubScreen = SubScreen.AddAsset },
-                                onAssetClick = { asset -> showingAssetDetail = asset },
-                                onExportClick = {
-                                    val f = viewModel.exportToPdf(context, "assets")
-                                    if (f != null) {
-                                        viewModel.shareExportFile(context, f)
-                                    } else {
-                                        Toast.makeText(context, "Ekspor gagal!", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onOpenScanner = { callback -> showingBarcodeScanner = callback }
-                            )
-                        }
-                        SubScreen.AddAsset -> {
-                            AddAssetForm(
-                                onSave = { asset ->
-                                    viewModel.saveAsset(asset) {
-                                        currentSubScreen = SubScreen.List
-                                        Toast.makeText(context, "Aset berhasil disimpan!", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onCancel = { currentSubScreen = SubScreen.List },
-                                assetList = assets,
-                                onOpenScanner = { callback -> showingBarcodeScanner = callback }
-                            )
-                        }
-                        else -> {}
                     }
                 }
-                AppTab.Perbaikan -> {
-                    when (currentSubScreen) {
-                        SubScreen.List -> {
-                            RepairsScreen(
-                                repairs = filteredRepairs,
-                                assets = assets,
-                                startDate = startDate,
-                                endDate = endDate,
-                                onStartDateChange = { viewModel.filterStartDate.value = it },
-                                onEndDateChange = { viewModel.filterEndDate.value = it },
-                                onRepairClick = { showingRepairDetail = it },
-                                onAddRepairClick = { currentSubScreen = SubScreen.AddRepair },
-                                onExportClick = {
-                                    val f = viewModel.exportToPdf(context, "repairs")
-                                    if (f != null) {
-                                        viewModel.shareExportFile(context, f)
-                                    } else {
-                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
+
+                // --- 1.5 Custom Gradient Overlays ---
+                if (currentSubScreen == SubScreen.List) {
+                    val themeBgColor = MaterialTheme.colorScheme.background
+                    
+                    // Top Gradient Overlay (for status bar & floating buttons readability)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(130.dp)
+                            .align(Alignment.TopCenter)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        themeBgColor.copy(alpha = 0.95f),
+                                        themeBgColor.copy(alpha = 0.85f),
+                                        themeBgColor.copy(alpha = 0.50f),
+                                        themeBgColor.copy(alpha = 0.15f),
+                                        Color.Transparent
+                                    )
+                                )
                             )
-                        }
-                        SubScreen.AddRepair -> {
-                            AddRepairForm(
-                                assetList = assets,
-                                onSave = { repair ->
-                                    viewModel.saveRepair(repair) {
-                                        currentSubScreen = SubScreen.List
-                                        prefilledInventoryNumber = null
-                                        Toast.makeText(context, "Perbaikan berhasil didaftarkan!", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onCancel = { 
-                                    currentSubScreen = SubScreen.List
-                                    prefilledInventoryNumber = null
-                                },
-                                onOpenScanner = { callback -> showingBarcodeScanner = callback },
-                                onOpenCamera = systemCameraOpener,
-                                initialInventoryNumber = prefilledInventoryNumber,
-                                currentUser = currentUsername
+                    )
+
+                    // Bottom Gradient Overlay (for navigation bar & floating search bar readability)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        themeBgColor.copy(alpha = 0.15f),
+                                        themeBgColor.copy(alpha = 0.50f),
+                                        themeBgColor.copy(alpha = 0.85f),
+                                        themeBgColor.copy(alpha = 0.95f),
+                                        themeBgColor
+                                    )
+                                )
                             )
-                        }
-                        else -> {}
-                    }
-                }
-                AppTab.Perawatan -> {
-                    when (currentSubScreen) {
-                        SubScreen.List -> {
-                            MaintenanceScreen(
-                                maintenances = filteredMaintenances,
-                                assets = assets,
-                                startDate = startDate,
-                                endDate = endDate,
-                                onStartDateChange = { viewModel.filterStartDate.value = it },
-                                onEndDateChange = { viewModel.filterEndDate.value = it },
-                                onMaintClick = { showingMaintenanceDetail = it },
-                                onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance },
-                                onExportClick = {
-                                    val f = viewModel.exportToPdf(context, "maintenances")
-                                    if (f != null) {
-                                        viewModel.shareExportFile(context, f)
-                                    } else {
-                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            )
-                        }
-                        SubScreen.AddMaintenance -> {
-                            AddMaintenanceForm(
-                                assetList = assets,
-                                onSave = { maint ->
-                                    viewModel.saveMaintenance(maint) {
-                                        currentSubScreen = SubScreen.List
-                                        prefilledInventoryNumber = null
-                                        Toast.makeText(context, "Pencatatan perawatan rutin disimpan!", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                onCancel = { 
-                                    currentSubScreen = SubScreen.List
-                                    prefilledInventoryNumber = null
-                                },
-                                onOpenScanner = { callback -> showingBarcodeScanner = callback },
-                                onOpenCamera = systemCameraOpener,
-                                initialInventoryNumber = prefilledInventoryNumber,
-                                currentUser = currentUsername
-                            )
-                        }
-                        else -> {}
-                    }
-                }
-                AppTab.UserManagement -> {
-                    val userListState = viewModel.allUsers.collectAsStateWithLifecycle(emptyList())
-                    UserManagementScreen(
-                        users = userListState.value,
-                        onSaveUser = { user ->
-                            viewModel.saveUser(user) {
-                                Toast.makeText(context, "User berhasil disimpan!", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onDeleteUser = { user ->
-                            viewModel.deleteUser(user) {
-                                Toast.makeText(context, "User berhasil dihapus!", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onExportAllLogs = {
-                            val f = viewModel.exportAllLogsToExcel(context)
-                            if (f != null) {
-                                viewModel.shareExportFile(context, f)
-                            } else {
-                                Toast.makeText(context, "Ekspor log sistem gagal!", Toast.LENGTH_SHORT).show()
-                            }
-                        }
                     )
                 }
+
+                // 2. Floating Buttons (on top of everything else)
+                if (currentSubScreen == SubScreen.List) {
+                    var userMenuExpanded by remember { mutableStateOf(false) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FloatingActionButton(
+                            onClick = {
+                                scope.launch { drawerState.open() }
+                            },
+                            shape = CircleShape,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .testTag("btn_drawer_toggle"),
+                            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
+                        }
+
+                        Box {
+                            FloatingActionButton(
+                                onClick = { userMenuExpanded = true },
+                                shape = CircleShape,
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag("btn_user_profile_floating"),
+                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+                            ) {
+                                Text(
+                                    text = currentUsername.take(1).uppercase(),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = userMenuExpanded,
+                                onDismissRequest = { userMenuExpanded = false }
+                            ) {
+                                Text(
+                                    text = "Halo, $currentUsername!",
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "Role: $currentUserRole",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                DropdownMenuItem(
+                                    text = { Text("Manajemen User") },
+                                    onClick = {
+                                        userMenuExpanded = false
+                                        currentTab = AppTab.UserManagement
+                                        currentSubScreen = SubScreen.List
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.ManageAccounts, contentDescription = null) },
+                                    modifier = Modifier.testTag("menu_user_management")
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Log Out") },
+                                    onClick = {
+                                        currentUsername = ""
+                                        currentUserRole = ""
+                                        userMenuExpanded = false
+                                        currentTab = AppTab.Dashboard
+                                        currentSubScreen = SubScreen.List
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
+                                    modifier = Modifier.testTag("menu_logout")
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 3. Floating Bottom Search Bar
+                AnimatedVisibility(
+                    visible = (currentTab == AppTab.Dashboard && currentSubScreen == SubScreen.List),
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .imePadding()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(28.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(28.dp)
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            TextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = { Text("Cari nomor atau nama...") },
+                                singleLine = true,
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("tf_search_asset")
+                            )
+                            IconButton(
+                                onClick = {
+                                    showingBarcodeScanner = { code ->
+                                        searchQuery = code
+                                    }
+                                },
+                                modifier = Modifier.testTag("btn_dashboard_scan")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = "Scan QR/Barcode",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
-    }
 
     // Modal Dialogs & Sheets
     showingAssetDetail?.let { asset ->
@@ -936,21 +1088,23 @@ fun DashboardScreen(
     onAddAssetClick: () -> Unit,
     onAssetClick: (Asset) -> Unit,
     onExportClick: () -> Unit,
-    onOpenScanner: (((String) -> Unit)) -> Unit
+    onOpenScanner: (((String) -> Unit)) -> Unit,
+    searchQuery: String
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    val filteredAssets = assets.filter {
-        it.inventoryNumber.contains(searchQuery, ignoreCase = true) ||
-                it.name.contains(searchQuery, ignoreCase = true) ||
-                it.location.contains(searchQuery, ignoreCase = true)
+    val filteredAssets = remember(assets, searchQuery) {
+        assets.filter {
+            it.inventoryNumber.contains(searchQuery, ignoreCase = true) ||
+                    it.name.contains(searchQuery, ignoreCase = true) ||
+                    it.location.contains(searchQuery, ignoreCase = true)
+        }
     }
 
     // Count statistics
-    val totalAssets = assets.size
-    val activeAssets = assets.count { it.status == "Aktif" }
-    val brokenAssets = assets.count { it.status == "Rusak Permanen" }
-    val holdRepairs = repairs.count { it.status == "Hold" }
-    val maintenanceAssets = assets.count { it.status == "Perawatan" }
+    val totalAssets = remember(assets) { assets.size }
+    val activeAssets = remember(assets) { assets.count { it.status == "Aktif" } }
+    val brokenAssets = remember(assets) { assets.count { it.status == "Rusak Permanen" } }
+    val holdRepairs = remember(repairs) { repairs.count { it.status == "Hold" } }
+    val maintenanceAssets = remember(assets) { assets.count { it.status == "Perawatan" } }
 
     LazyColumn(
         modifier = Modifier
@@ -1076,40 +1230,6 @@ fun DashboardScreen(
             }
         }
 
-        // Search Bar
-        item {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Cari Aset...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(
-                        onClick = {
-                            onOpenScanner { code ->
-                                searchQuery = code
-                            }
-                        },
-                        modifier = Modifier.testTag("btn_dashboard_scan")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = "Scan QR/Barcode",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(24.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("tf_search_asset"),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                )
-            )
-        }
-
         // Heading
         item {
             Text(
@@ -1156,6 +1276,10 @@ fun DashboardScreen(
             items(filteredAssets, key = { it.inventoryNumber }) { asset ->
                 AssetItemCard(asset = asset, onClick = { onAssetClick(asset) })
             }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
@@ -2230,6 +2354,9 @@ fun RepairsScreen(
                 items(repairs, key = { it.id }) { repair ->
                     RepairItemCard(repair = repair, assets = assets, onClick = { onRepairClick(repair) })
                 }
+                item {
+                    Spacer(modifier = Modifier.height(100.dp))
+                }
             }
         }
     }
@@ -3299,6 +3426,9 @@ fun MaintenanceScreen(
             ) {
                 items(maintenances, key = { it.id }) { maint ->
                     MaintItemCard(maintenance = maint, assets = assets, onClick = { onMaintClick(maint) })
+                }
+                item {
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
         }
