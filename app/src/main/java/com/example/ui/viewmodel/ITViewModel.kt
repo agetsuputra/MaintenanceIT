@@ -646,10 +646,10 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         fun drawField(label: String, value: String) {
             canvas.drawText(label, 48f, textY, keyPaint)
             val wrapLayout = StaticLayout(
-                value, textPaint, 240, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false
+                value, textPaint, 175, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false
             )
             canvas.save()
-            canvas.translate(115f, textY - 7f)
+            canvas.translate(110f, textY - 7f)
             wrapLayout.draw(canvas)
             canvas.restore()
             textY += wrapLayout.height + 3f
@@ -669,7 +669,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         }
 
         fun drawPhoto(photoStr: String?, label: String, photoX: Float, photoY: Float) {
-            val rectBg = RectF(photoX, photoY, photoX + 54f, photoY + 36f)
+            val rectBg = RectF(photoX, photoY, photoX + 75f, photoY + 50f)
             val rectPaint = Paint().apply {
                 color = 0xFFF5F5F5.toInt()
                 style = Paint.Style.FILL
@@ -689,41 +689,41 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 isAntiAlias = true
                 textAlign = Paint.Align.CENTER
             }
-            canvas.drawText(label, photoX + 27f, photoY + 44f, lblPaint)
+            canvas.drawText(label, photoX + 37.5f, photoY + 62f, lblPaint)
 
             val (urlPart, locPart, datePart) = parseWatermarkedPhoto(photoStr)
             val imageBitmap = decodeBase64ToBitmap(urlPart)
             if (imageBitmap != null) {
                 val src = Rect(0, 0, imageBitmap.width, imageBitmap.height)
-                val dst = Rect((photoX + 0.5f).toInt(), (photoY + 0.5f).toInt(), (photoX + 53.5f).toInt(), (photoY + 35.5f).toInt())
+                val dst = Rect((photoX + 0.5f).toInt(), (photoY + 0.5f).toInt(), (photoX + 74.5f).toInt(), (photoY + 49.5f).toInt())
                 canvas.drawBitmap(imageBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
 
-                val txt = "${locPart.take(12)}, ${datePart.take(10)}"
+                val txt = "${locPart.take(16)}, ${datePart.take(10)}"
                 val overlayPaint = Paint().apply {
                     color = 0xAA000000.toInt()
                     style = Paint.Style.FILL
                 }
-                canvas.drawRect(RectF(photoX + 0.5f, photoY + 28f, photoX + 53.5f, photoY + 35.5f), overlayPaint)
+                canvas.drawRect(RectF(photoX + 0.5f, photoY + 40.5f, photoX + 74.5f, photoY + 49.5f), overlayPaint)
                 val wmTxtPaint = Paint().apply {
                     color = Color.WHITE
                     textSize = 3f
                     isAntiAlias = true
                 }
-                canvas.drawText(txt, photoX + 2f, photoY + 33.5f, wmTxtPaint)
+                canvas.drawText(txt, photoX + 2.5f, photoY + 47f, wmTxtPaint)
             } else {
                 val emptyPaint = Paint().apply {
                     color = Color.GRAY
-                    textSize = 5.5f
+                    textSize = 6f
                     isAntiAlias = true
                     textAlign = Paint.Align.CENTER
                 }
-                canvas.drawText("No Photo", photoX + 27f, photoY + 20f, emptyPaint)
+                canvas.drawText("No Photo", photoX + 37.5f, photoY + 28f, emptyPaint)
             }
         }
 
-        drawPhoto(r.photoBefore, "SEBELUM", 365f, y + 36f)
-        drawPhoto(r.photoAfter, "SESUDAH", 427f, y + 36f)
-        drawPhoto(r.photoUser, "PENERIMA", 489f, y + 36f)
+        drawPhoto(r.photoBefore, "SEBELUM", 300f, y + 42f)
+        drawPhoto(r.photoAfter, "SESUDAH", 385f, y + 42f)
+        drawPhoto(r.photoUser, "PENERIMA", 470f, y + 42f)
 
         writer.currentY += cardHeight
     }
@@ -808,10 +808,10 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         fun drawField(label: String, value: String) {
             canvas.drawText(label, 48f, textY, keyPaint)
             val wrapLayout = StaticLayout(
-                value, textPaint, 240, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false
+                value, textPaint, 175, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false
             )
             canvas.save()
-            canvas.translate(115f, textY - 7f)
+            canvas.translate(110f, textY - 7f)
             wrapLayout.draw(canvas)
             canvas.restore()
             textY += wrapLayout.height + 3f
@@ -828,7 +828,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         drawField("Teknisi:", m.technician)
 
         fun drawPhoto(photoStr: String?, label: String, photoX: Float, photoY: Float) {
-            val rectBg = RectF(photoX, photoY, photoX + 54f, photoY + 36f)
+            val rectBg = RectF(photoX, photoY, photoX + 75f, photoY + 50f)
             val rectPaint = Paint().apply {
                 color = 0xFFF5F5F5.toInt()
                 style = Paint.Style.FILL
@@ -848,41 +848,41 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 isAntiAlias = true
                 textAlign = Paint.Align.CENTER
             }
-            canvas.drawText(label, photoX + 27f, photoY + 44f, lblPaint)
+            canvas.drawText(label, photoX + 37.5f, photoY + 62f, lblPaint)
 
             val (urlPart, locPart, datePart) = parseWatermarkedPhoto(photoStr)
             val imageBitmap = decodeBase64ToBitmap(urlPart)
             if (imageBitmap != null) {
                 val src = Rect(0, 0, imageBitmap.width, imageBitmap.height)
-                val dst = Rect((photoX + 0.5f).toInt(), (photoY + 0.5f).toInt(), (photoX + 53.5f).toInt(), (photoY + 35.5f).toInt())
+                val dst = Rect((photoX + 0.5f).toInt(), (photoY + 0.5f).toInt(), (photoX + 74.5f).toInt(), (photoY + 49.5f).toInt())
                 canvas.drawBitmap(imageBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
 
-                val txt = "${locPart.take(12)}, ${datePart.take(10)}"
+                val txt = "${locPart.take(16)}, ${datePart.take(10)}"
                 val overlayPaint = Paint().apply {
                     color = 0xAA000000.toInt()
                     style = Paint.Style.FILL
                 }
-                canvas.drawRect(RectF(photoX + 0.5f, photoY + 28f, photoX + 53.5f, photoY + 35.5f), overlayPaint)
+                canvas.drawRect(RectF(photoX + 0.5f, photoY + 40.5f, photoX + 74.5f, photoY + 49.5f), overlayPaint)
                 val wmTxtPaint = Paint().apply {
                     color = Color.WHITE
                     textSize = 3f
                     isAntiAlias = true
                 }
-                canvas.drawText(txt, photoX + 2f, photoY + 33.5f, wmTxtPaint)
+                canvas.drawText(txt, photoX + 2.5f, photoY + 47f, wmTxtPaint)
             } else {
                 val emptyPaint = Paint().apply {
                     color = Color.GRAY
-                    textSize = 5.5f
+                    textSize = 6f
                     isAntiAlias = true
                     textAlign = Paint.Align.CENTER
                 }
-                canvas.drawText("No Photo", photoX + 27f, photoY + 20f, emptyPaint)
+                canvas.drawText("No Photo", photoX + 37.5f, photoY + 28f, emptyPaint)
             }
         }
 
-        drawPhoto(m.photoBefore, "SEBELUM", 365f, y + 36f)
-        drawPhoto(m.photoAfter, "SESUDAH", 427f, y + 36f)
-        drawPhoto(m.photoUser, "PENERIMA", 489f, y + 36f)
+        drawPhoto(m.photoBefore, "SEBELUM", 300f, y + 42f)
+        drawPhoto(m.photoAfter, "SESUDAH", 385f, y + 42f)
+        drawPhoto(m.photoUser, "PENERIMA", 470f, y + 42f)
 
         writer.currentY += cardHeight
     }

@@ -414,6 +414,12 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var currentCameraCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     var isSearchingGps by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        fetchRealtimeLocation(context) { locationResult ->
+            fetchedLiveLocation = locationResult
+        }
+    }
+
     val systemCameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
@@ -433,17 +439,13 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     val systemCameraOpener: ((String) -> Unit) -> Unit = remember {
         { callback ->
             currentCameraCallback = callback
-            isSearchingGps = true
             fetchRealtimeLocation(context) { locationResult ->
                 fetchedLiveLocation = locationResult
-                isSearchingGps = false
-                (context as? android.app.Activity)?.runOnUiThread {
-                    try {
-                        systemCameraLauncher.launch()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
+            }
+            try {
+                systemCameraLauncher.launch()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -452,35 +454,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
     var currentUsername by rememberSaveable { mutableStateOf("") }
     var currentUserRole by rememberSaveable { mutableStateOf("") }
-
-    if (isSearchingGps) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { isSearchingGps = false }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp,
-                modifier = Modifier.width(280.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Mencari lokasi GPS...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
-    }
 
     if (showSplash) {
         Box(
