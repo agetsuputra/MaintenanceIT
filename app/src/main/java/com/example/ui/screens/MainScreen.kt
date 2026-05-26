@@ -180,6 +180,85 @@ fun getDeviceLocation(context: android.content.Context, fallbackLocation: String
     return fallbackLocation
 }
 
+fun fetchRealtimeLocation(context: android.content.Context, onResult: (String) -> Unit) {
+    val fusedLocationClient = try {
+        com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
+    } catch (e: Exception) {
+        null
+    }
+
+    val hasCoarse = androidx.core.content.ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    
+    val hasFine = androidx.core.content.ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.ACCESS_FINE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    if (!hasCoarse && !hasFine) {
+        onResult("Location Permission Denied")
+        return
+    }
+
+    if (fusedLocationClient != null) {
+        val cts = com.google.android.gms.tasks.CancellationTokenSource()
+        try {
+            fusedLocationClient.getCurrentLocation(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                cts.token
+            ).addOnSuccessListener { loc ->
+                if (loc != null) {
+                    onResult("Lat: ${String.format(Locale.US, "%.5f", loc.latitude)}, Lon: ${String.format(Locale.US, "%.5f", loc.longitude)}")
+                } else {
+                    fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc ->
+                        if (lastLoc != null) {
+                            onResult("Lat: ${String.format(Locale.US, "%.5f", lastLoc.latitude)}, Lon: ${String.format(Locale.US, "%.5f", lastLoc.longitude)}")
+                        } else {
+                            fallbackLocationManager(context, onResult)
+                        }
+                    }.addOnFailureListener {
+                        fallbackLocationManager(context, onResult)
+                    }
+                }
+            }.addOnFailureListener {
+                fallbackLocationManager(context, onResult)
+            }
+        } catch (e: SecurityException) {
+            fallbackLocationManager(context, onResult)
+        }
+        
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        handler.postDelayed({
+            cts.cancel()
+        }, 1500)
+    } else {
+        fallbackLocationManager(context, onResult)
+    }
+}
+
+private fun fallbackLocationManager(context: android.content.Context, onResult: (String) -> Unit) {
+    val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as? android.location.LocationManager
+    if (locationManager == null) {
+        onResult("GPS Unavailable")
+        return
+    }
+    try {
+        val providers = locationManager.getProviders(true)
+        for (provider in providers) {
+            val loc = locationManager.getLastKnownLocation(provider)
+            if (loc != null) {
+                onResult("Lat: ${String.format(Locale.US, "%.5f", loc.latitude)}, Lon: ${String.format(Locale.US, "%.5f", loc.longitude)}")
+                return
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    onResult("GPS Signal Lost")
+}
+
 fun compressAndWatermarkBitmap(
     bitmap: Bitmap,
     location: String,
@@ -331,16 +410,16 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var prefilledInventoryNumber by remember { mutableStateOf<String?>(null) }
     var showingUpdateAssetDialog by remember { mutableStateOf<Asset?>(null) }
     
+    var fetchedLiveLocation by remember { mutableStateOf("IT Office Desk") }
     var currentCameraCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val systemCameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
         if (bitmap != null) {
             val currentDateStr = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()).format(Date())
-            val liveLoc = getDeviceLocation(context, "IT Office Desk")
             val compressedBase64 = compressAndWatermarkBitmap(
                 bitmap = bitmap,
-                location = liveLoc,
+                location = fetchedLiveLocation,
                 dateStr = currentDateStr
             )
             currentCameraCallback?.invoke(compressedBase64)
@@ -351,7 +430,11 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     val systemCameraOpener: ((String) -> Unit) -> Unit = remember {
         { callback ->
             currentCameraCallback = callback
-            systemCameraLauncher.launch()
+            android.widget.Toast.makeText(context, "Mencari lokasi GPS...", android.widget.Toast.LENGTH_SHORT).show()
+            fetchRealtimeLocation(context) { locationResult ->
+                fetchedLiveLocation = locationResult
+                systemCameraLauncher.launch()
+            }
         }
     }
 

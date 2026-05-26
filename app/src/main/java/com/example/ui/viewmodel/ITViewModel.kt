@@ -690,20 +690,25 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
             }
             canvas.drawText(label, photoX + 76f, photoY + 12f, lblPaint)
 
-            val imageBitmap = decodeBase64ToBitmap(photoStr)
+            val (urlPart, locPart, datePart) = parseWatermarkedPhoto(photoStr)
+            val imageBitmap = decodeBase64ToBitmap(urlPart)
             if (imageBitmap != null) {
                 val src = Rect(0, 0, imageBitmap.width, imageBitmap.height)
                 val dst = Rect((photoX + 1f).toInt(), (photoY + 1f).toInt(), (photoX + 69f).toInt(), (photoY + 47f).toInt())
                 canvas.drawBitmap(imageBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
 
-                val (_, loc, date) = parseWatermarkedPhoto(photoStr)
-                val wmPaint = Paint().apply {
-                    color = Color.WHITE
-                    textSize = 4.5f
-                    isAntiAlias = true
-                    setShadowLayer(1f, 0f, 0f, Color.BLACK)
+                val txt = "${locPart.take(14)}, ${datePart.take(10)}"
+                val overlayPaint = Paint().apply {
+                    color = 0xAA000000.toInt()
+                    style = Paint.Style.FILL
                 }
-                canvas.drawText("${loc.take(12)}, ${date.take(10)}", photoX + 3f, photoY + 43f, wmPaint)
+                canvas.drawRect(RectF(photoX + 1f, photoY + 39f, photoX + 69f, photoY + 47f), overlayPaint)
+                val wmTxtPaint = Paint().apply {
+                    color = Color.WHITE
+                    textSize = 4f
+                    isAntiAlias = true
+                }
+                canvas.drawText(txt, photoX + 4f, photoY + 45f, wmTxtPaint)
             } else {
                 val emptyPaint = Paint().apply {
                     color = Color.GRAY
@@ -843,20 +848,25 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
             }
             canvas.drawText(label, photoX + 76f, photoY + 12f, lblPaint)
 
-            val imageBitmap = decodeBase64ToBitmap(photoStr)
+            val (urlPart, locPart, datePart) = parseWatermarkedPhoto(photoStr)
+            val imageBitmap = decodeBase64ToBitmap(urlPart)
             if (imageBitmap != null) {
                 val src = Rect(0, 0, imageBitmap.width, imageBitmap.height)
                 val dst = Rect((photoX + 1f).toInt(), (photoY + 1f).toInt(), (photoX + 69f).toInt(), (photoY + 47f).toInt())
                 canvas.drawBitmap(imageBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
 
-                val (_, loc, date) = parseWatermarkedPhoto(photoStr)
-                val wmPaint = Paint().apply {
-                    color = Color.WHITE
-                    textSize = 4.5f
-                    isAntiAlias = true
-                    setShadowLayer(1f, 0f, 0f, Color.BLACK)
+                val txt = "${locPart.take(14)}, ${datePart.take(10)}"
+                val overlayPaint = Paint().apply {
+                    color = 0xAA000000.toInt()
+                    style = Paint.Style.FILL
                 }
-                canvas.drawText("${loc.take(12)}, ${date.take(10)}", photoX + 3f, photoY + 43f, wmPaint)
+                canvas.drawRect(RectF(photoX + 1f, photoY + 39f, photoX + 69f, photoY + 47f), overlayPaint)
+                val wmTxtPaint = Paint().apply {
+                    color = Color.WHITE
+                    textSize = 4f
+                    isAntiAlias = true
+                }
+                canvas.drawText(txt, photoX + 4f, photoY + 45f, wmTxtPaint)
             } else {
                 val emptyPaint = Paint().apply {
                     color = Color.GRAY
@@ -936,61 +946,24 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         val dateFormat = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
         val dateFileFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
         val timestamp = dateFileFormat.format(Date())
-        val filename = "Log_Sistem_Lengkap_IT_$timestamp.xls"
-
-        val sb = StringBuilder()
-        sb.append("<?xml version=\"1.0\"?>\n")
-        sb.append("<?mso-application progid=\"Excel.Sheet\"?>\n")
-        sb.append("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"\n")
-        sb.append(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"\n")
-        sb.append(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"\n")
-        sb.append(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"\n")
-        sb.append(" xmlns:html=\"http://www.w3.org/TR/REC-html40\">\n")
-
-        sb.append(" <Styles>\n")
-        sb.append("  <Style ss:ID=\"Default\" ss:Name=\"Normal\">\n")
-        sb.append("   <Alignment ss:Vertical=\"Bottom\"/>\n")
-        sb.append("   <Borders/>\n")
-        sb.append("   <Font ss:FontName=\"Segoe UI\" x:Family=\"Swiss\" ss:Size=\"11\" ss:Color=\"#000000\"/>\n")
-        sb.append("  </Style>\n")
-        sb.append("  <Style ss:ID=\"Title\">\n")
-        sb.append("   <Font ss:FontName=\"Segoe UI\" ss:Bold=\"1\" ss:Size=\"15\" ss:Color=\"#01579B\"/>\n")
-        sb.append("   <Interior ss:Color=\"#E1F5FE\" ss:Pattern=\"Solid\"/>\n")
-        sb.append("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>\n")
-        sb.append("  </Style>\n")
-        sb.append("  <Style ss:ID=\"SectionTitle\">\n")
-        sb.append("   <Font ss:FontName=\"Segoe UI\" ss:Bold=\"1\" ss:Size=\"13\" ss:Color=\"#0D47A1\"/>\n")
-        sb.append("   <Interior ss:Color=\"#E3F2FD\" ss:Pattern=\"Solid\"/>\n")
-        sb.append("   <Alignment ss:Horizontal=\"Left\" ss:Vertical=\"Center\"/>\n")
-        sb.append("  </Style>\n")
-        sb.append("  <Style ss:ID=\"Header\">\n")
-        sb.append("   <Font ss:FontName=\"Segoe UI\" ss:Bold=\"1\" ss:Color=\"#FFFFFF\" ss:Size=\"11\"/>\n")
-        sb.append("   <Interior ss:Color=\"#0288D1\" ss:Pattern=\"Solid\"/>\n")
-        sb.append("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>\n")
-        sb.append("   <Borders>\n")
-        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>\n")
-        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>\n")
-        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>\n")
-        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#000000\"/>\n")
-        sb.append("   </Borders>\n")
-        sb.append("  </Style>\n")
-        sb.append("  <Style ss:ID=\"DataCell\">\n")
-        sb.append("   <Borders>\n")
-        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#B0BEC5\"/>\n")
-        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#B0BEC5\"/>\n")
-        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#B0BEC5\"/>\n")
-        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#B0BEC5\"/>\n")
-        sb.append("   </Borders>\n")
-        sb.append("   <Alignment ss:Vertical=\"Center\" ss:WrapText=\"1\"/>\n")
-        sb.append("  </Style>\n")
-        sb.append(" </Styles>\n")
+        val filename = "Log_Sistem_Lengkap_IT_$timestamp.xlsx"
 
         val assets = allAssets.value
         val repairs = allRepairs.value
         val maintenances = allMaintenances.value
         val logs = allUpdateLogs.value
-
+        
         val assetNameMap = assets.associateBy { it.inventoryNumber }
+
+        fun colName(colIndex: Int): String {
+            var temp = colIndex
+            var colName = ""
+            while (temp >= 0) {
+                colName = ('A' + (temp % 26)).toString() + colName
+                temp = (temp / 26) - 1
+            }
+            return colName
+        }
 
         fun escapeXml(str: String?): String {
             if (str == null) return ""
@@ -1001,190 +974,249 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 .replace("'", "&apos;")
         }
 
-        // Sheet 1: Inventaris & Logs
-        sb.append(" <Worksheet ss:Name=\"Inventaris\">\n")
-        sb.append("  <Table>\n")
-        sb.append("   <Column ss:Width=\"115\"/>\n")
-        sb.append("   <Column ss:Width=\"150\"/>\n")
-        sb.append("   <Column ss:Width=\"115\"/>\n")
-        sb.append("   <Column ss:Width=\"115\"/>\n")
-        sb.append("   <Column ss:Width=\"115\"/>\n")
-        sb.append("   <Column ss:Width=\"160\"/>\n")
-        sb.append("   <Column ss:Width=\"130\"/>\n")
+        class SheetWriter {
+            private val sb = java.lang.StringBuilder()
+            private var rowCount = 0
 
-        sb.append("   <Row ss:Height=\"28\">\n")
-        sb.append("    <Cell ss:MergeAcross=\"6\" ss:StyleID=\"Title\"><Data ss:Type=\"String\">DAFTAR INVENTARIS ASET Tim IT Support</Data></Cell>\n")
-        sb.append("   </Row>\n")
-        sb.append("   <Row ss:Height=\"18\">\n")
-        sb.append("    <Cell ss:MergeAcross=\"6\"><Data ss:Type=\"String\">Exported: ${dateFormat.format(Date())} | Total Aset: ${assets.size}</Data></Cell>\n")
-        sb.append("   </Row>\n")
+            fun startSheet(colsWidths: List<Int>) {
+                sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n")
+                sb.append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">\n")
+                sb.append("  <cols>\n")
+                colsWidths.forEachIndexed { idx, w ->
+                    sb.append("    <col min=\"${idx + 1}\" max=\"${idx + 1}\" width=\"$w\" customWidth=\"1\"/>\n")
+                }
+                sb.append("  </cols>\n")
+                sb.append("  <sheetData>\n")
+            }
 
-        sb.append("   <Row ss:Height=\"22\">\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">No. Inventaris</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Nama Perangkat</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Kategori</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Lokasi</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Status</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Deskripsi</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Tanggal Registrasi</Data></Cell>\n")
-        sb.append("   </Row>\n")
+            fun writeRow(height: Int, cells: List<Any?>, styleIndices: List<Int> = emptyList()) {
+                rowCount++
+                sb.append("    <row r=\"$rowCount\" ht=\"$height\" customHeight=\"1\">\n")
+                cells.forEachIndexed { colIdx, cellVal ->
+                    val colNameStr = colName(colIdx)
+                    val ref = "$colNameStr$rowCount"
+                    val styleIdx = if (styleIndices.size > colIdx) styleIndices[colIdx] else (if (styleIndices.isNotEmpty()) styleIndices[0] else 0)
 
+                    if (cellVal == null) {
+                        // Empty cell
+                    } else if (cellVal is Number) {
+                        sb.append("      <c r=\"$ref\" s=\"$styleIdx\"><v>$cellVal</v></c>\n")
+                    } else {
+                        val str = cellVal.toString()
+                        sb.append("      <c r=\"$ref\" s=\"$styleIdx\" t=\"inlineStr\"><is><t>${escapeXml(str)}</t></is></c>\n")
+                    }
+                }
+                sb.append("    </row>\n")
+            }
+            
+            fun writeEmptyRow() {
+                rowCount++
+                sb.append("    <row r=\"$rowCount\"/>\n")
+            }
+
+            fun endSheet(protect: Boolean = true) {
+                sb.append("  </sheetData>\n")
+                if (protect) {
+                    sb.append("  <sheetProtection sheet=\"true\" objects=\"true\" scenarios=\"true\" selectLockedCells=\"true\" selectUnlockedCells=\"true\"/>\n")
+                }
+                sb.append("</worksheet>\n")
+            }
+
+            override fun toString() = sb.toString()
+        }
+
+        // SHEET 1: Inventaris & Logs
+        val sheet1 = SheetWriter()
+        sheet1.startSheet(listOf(18, 22, 18, 18, 18, 25, 20))
+        sheet1.writeRow(28, listOf("DAFTAR INVENTARIS ASET Tim IT Support", null, null, null, null, null, null), listOf(2))
+        sheet1.writeRow(18, listOf("Exported: ${dateFormat.format(Date())} | Total Aset: ${assets.size}", null, null, null, null, null, null), listOf(3))
+        sheet1.writeEmptyRow()
+        sheet1.writeRow(22, listOf("No. Inventaris", "Nama Perangkat", "Kategori", "Lokasi", "Status", "Deskripsi", "Tanggal Registrasi"), listOf(1))
         assets.forEach { a ->
-            sb.append("   <Row ss:Height=\"20\">\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.inventoryNumber)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.name)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.type)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.location)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.status)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(a.description ?: "")}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${dateFormat.format(Date(a.createdAt))}</Data></Cell>\n")
-            sb.append("   </Row>\n")
+            sheet1.writeRow(20, listOf(
+                a.inventoryNumber,
+                a.name,
+                a.type,
+                a.location,
+                a.status,
+                a.description ?: "",
+                dateFormat.format(Date(a.createdAt))
+            ), listOf(0))
         }
-
-        sb.append("   <Row><Cell><Data ss:Type=\"String\"></Data></Cell></Row>\n")
-        sb.append("   <Row><Cell><Data ss:Type=\"String\"></Data></Cell></Row>\n")
-
-        sb.append("   <Row ss:Height=\"25\">\n")
-        sb.append("    <Cell ss:MergeAcross=\"6\" ss:StyleID=\"SectionTitle\"><Data ss:Type=\"String\">RIWAYAT PERUBAHAN &amp; LOG UPDATE INVENTARIS</Data></Cell>\n")
-        sb.append("   </Row>\n")
-        sb.append("   <Row ss:Height=\"22\">\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Update</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">No. Inventaris</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Lokasi Lama &gt; Baru</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Status Lama &gt; Baru</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Komentar Lama</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Komentar Baru</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Sebab Rusak Permanen</Data></Cell>\n")
-        sb.append("   </Row>\n")
-
+        
+        sheet1.writeEmptyRow()
+        sheet1.writeEmptyRow()
+        
+        sheet1.writeRow(25, listOf("RIWAYAT PERUBAHAN & LOG UPDATE INVENTARIS", null, null, null, null, null, null), listOf(2))
+        sheet1.writeRow(22, listOf("Waktu Update", "No. Inventaris", "Lokasi Lama > Baru", "Status Lama > Baru", "Komentar Lama", "Komentar Baru", "Sebab Rusak Permanen"), listOf(1))
         logs.forEach { l ->
-            sb.append("   <Row ss:Height=\"22\">\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${dateFormat.format(Date(l.updateTime))}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.inventoryNumber)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.oldLocation)} &gt; ${escapeXml(l.newLocation)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.oldStatus)} &gt; ${escapeXml(l.newStatus)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.oldDescription ?: "")}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.newDescription ?: "")}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(l.reasonForPermanentDamage ?: "")}</Data></Cell>\n")
-            sb.append("   </Row>\n")
+            sheet1.writeRow(22, listOf(
+                dateFormat.format(Date(l.updateTime)),
+                l.inventoryNumber,
+                "${l.oldLocation} > ${l.newLocation}",
+                "${l.oldStatus} > ${l.newStatus}",
+                l.oldDescription ?: "",
+                l.newDescription ?: "",
+                l.reasonForPermanentDamage ?: ""
+            ), listOf(0))
         }
+        sheet1.endSheet(protect = true)
 
-        sb.append("  </Table>\n")
-        sb.append(" </Worksheet>\n")
-
-        // Sheet 2: Perbaikan
-        sb.append(" <Worksheet ss:Name=\"Perbaikan\">\n")
-        sb.append("  <Table>\n")
-        sb.append("   <Column ss:Width=\"50\"/>\n")
-        sb.append("   <Column ss:Width=\"100\"/>\n")
-        sb.append("   <Column ss:Width=\"150\"/>\n")
-        sb.append("   <Column ss:Width=\"120\"/>\n")
-        sb.append("   <Column ss:Width=\"120\"/>\n")
-        sb.append("   <Column ss:Width=\"150\"/>\n")
-        sb.append("   <Column ss:Width=\"150\"/>\n")
-        sb.append("   <Column ss:Width=\"150\"/>\n")
-        sb.append("   <Column ss:Width=\"100\"/>\n")
-        sb.append("   <Column ss:Width=\"150\"/>\n")
-        sb.append("   <Column ss:Width=\"120\"/>\n")
-
-        sb.append("   <Row ss:Height=\"28\">\n")
-        sb.append("    <Cell ss:MergeAcross=\"10\" ss:StyleID=\"Title\"><Data ss:Type=\"String\">DAFTAR RIWAYAT PERBAIKAN ASET (SEMUA STATUS)</Data></Cell>\n")
-        sb.append("   </Row>\n")
-
-        sb.append("   <Row ss:Height=\"22\">\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">ID</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">No. Inventaris</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Nama Perangkat</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Mulai</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Selesai</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Kendala</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Penyebab</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Tindakan</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Status</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Alasan Hold / Estimasi</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Teknisi</Data></Cell>\n")
-        sb.append("   </Row>\n")
-
+        // SHEET 2: Perbaikan
+        val sheet2 = SheetWriter()
+        sheet2.startSheet(listOf(8, 18, 22, 20, 20, 25, 25, 25, 15, 25, 18))
+        sheet2.writeRow(28, listOf("DAFTAR RIWAYAT PERBAIKAN ASET (SEMUA STATUS)", null, null, null, null, null, null, null, null, null, null), listOf(2))
+        sheet2.writeEmptyRow()
+        sheet2.writeRow(22, listOf("ID", "No. Inventaris", "Nama Perangkat", "Waktu Mulai", "Waktu Selesai", "Kendala", "Penyebab", "Tindakan", "Status", "Alasan Hold / Estimasi", "Teknisi"), listOf(1))
         repairs.forEach { r ->
             val devName = assetNameMap[r.inventoryNumber]?.name ?: "Aset Tidak Dikenal"
             val endStr = r.endTime?.let { dateFormat.format(Date(it)) } ?: "Proses"
             val holdStr = if (!r.holdReason.isNullOrBlank()) "${r.holdReason} (Est: ${r.holdEstimate ?: "-"})" else ""
-
-            sb.append("   <Row ss:Height=\"22\">\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"Number\">${r.id}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.inventoryNumber)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(devName)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${dateFormat.format(Date(r.startTime))}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(endStr)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.problem)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.cause)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.actionTaken)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.status)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(holdStr)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(r.technician)}</Data></Cell>\n")
-            sb.append("   </Row>\n")
+            sheet2.writeRow(22, listOf(
+                r.id,
+                r.inventoryNumber,
+                devName,
+                dateFormat.format(Date(r.startTime)),
+                endStr,
+                r.problem,
+                r.cause,
+                r.actionTaken,
+                r.status,
+                holdStr,
+                r.technician
+            ), listOf(0))
         }
+        sheet2.endSheet(protect = true)
 
-        sb.append("  </Table>\n")
-        sb.append(" </Worksheet>\n")
-
-        // Sheet 3: Perawatan
-        sb.append(" <Worksheet ss:Name=\"Perawatan\">\n")
-        sb.append("  <Table>\n")
-        sb.append("   <Column ss:Width=\"50\"/>\n")
-        sb.append("   <Column ss:Width=\"100\"/>\n")
-        sb.append("   <Column ss:Width=\"150\"/>\n")
-        sb.append("   <Column ss:Width=\"120\"/>\n")
-        sb.append("   <Column ss:Width=\"120\"/>\n")
-        sb.append("   <Column ss:Width=\"160\"/>\n")
-        sb.append("   <Column ss:Width=\"160\"/>\n")
-        sb.append("   <Column ss:Width=\"160\"/>\n")
-        sb.append("   <Column ss:Width=\"100\"/>\n")
-        sb.append("   <Column ss:Width=\"120\"/>\n")
-
-        sb.append("   <Row ss:Height=\"28\">\n")
-        sb.append("    <Cell ss:MergeAcross=\"9\" ss:StyleID=\"Title\"><Data ss:Type=\"String\">DAFTAR RIWAYAT PERAWATAN RUTIN ASET (SEMUA STATUS)</Data></Cell>\n")
-        sb.append("   </Row>\n")
-
-        sb.append("   <Row ss:Height=\"22\">\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">ID</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">No. Inventaris</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Nama Perangkat</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Mulai</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Waktu Selesai</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Tindakan Dilakukan</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Kendala Ditemukan</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Hasil / Rekomendasi</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Status</Data></Cell>\n")
-        sb.append("    <Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">Teknisi</Data></Cell>\n")
-        sb.append("   </Row>\n")
-
+        // SHEET 3: Perawatan
+        val sheet3 = SheetWriter()
+        sheet3.startSheet(listOf(8, 18, 22, 20, 20, 25, 25, 25, 15, 18))
+        sheet3.writeRow(28, listOf("DAFTAR RIWAYAT PERAWATAN RUTIN ASET (SEMUA STATUS)", null, null, null, null, null, null, null, null, null), listOf(2))
+        sheet3.writeEmptyRow()
+        sheet3.writeRow(22, listOf("ID", "No. Inventaris", "Nama Perangkat", "Waktu Mulai", "Waktu Selesai", "Tindakan Dilakukan", "Kendala Ditemukan", "Hasil / Rekomendasi", "Status", "Teknisi"), listOf(1))
         maintenances.forEach { m ->
             val devName = assetNameMap[m.inventoryNumber]?.name ?: "Aset Tidak Dikenal"
             val endStr = m.endTime?.let { dateFormat.format(Date(it)) } ?: "Proses"
-
-            sb.append("   <Row ss:Height=\"22\">\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"Number\">${m.id}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.inventoryNumber)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(devName)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${dateFormat.format(Date(m.startTime))}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(endStr)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.actionTaken)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.issuesFound)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.result)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.status)}</Data></Cell>\n")
-            sb.append("    <Cell ss:StyleID=\"DataCell\"><Data ss:Type=\"String\">${escapeXml(m.technician)}</Data></Cell>\n")
-            sb.append("   </Row>\n")
+            sheet3.writeRow(22, listOf(
+                m.id,
+                m.inventoryNumber,
+                devName,
+                dateFormat.format(Date(m.startTime)),
+                endStr,
+                m.actionTaken,
+                m.issuesFound,
+                m.result,
+                m.status,
+                m.technician
+            ), listOf(0))
         }
+        sheet3.endSheet(protect = true)
 
-        sb.append("  </Table>\n")
-        sb.append(" </Worksheet>\n")
+        val contentTypesXml = """
+            <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+              <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+              <Default Extension="xml" ContentType="application/xml"/>
+              <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+              <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+              <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+              <Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+              <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+            </Types>
+        """.trimIndent()
 
-        sb.append("</Workbook>\n")
+        val relsXml = """
+            <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+            </Relationships>
+        """.trimIndent()
+
+        val workbookXml = """
+            <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+              <sheets>
+                <sheet name="Inventaris" sheetId="1" r:id="rId1"/>
+                <sheet name="Perbaikan" sheetId="2" r:id="rId2"/>
+                <sheet name="Perawatan" sheetId="3" r:id="rId3"/>
+              </sheets>
+            </workbook>
+        """.trimIndent()
+
+        val workbookRelsXml = """
+            <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+              <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
+              <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/>
+              <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+            </Relationships>
+        """.trimIndent()
+
+        val stylesXml = """
+            <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+              <fonts count="4">
+                <font><fontSize val="11"/><color rgb="000000"/><name val="Segoe UI"/></font>
+                <font><b/><fontSize val="14"/><color rgb="01579B"/><name val="Segoe UI"/></font>
+                <font><b/><fontSize val="11"/><color rgb="FFFFFFFF"/><name val="Segoe UI"/></font>
+                <font><b/><fontSize val="11"/><color rgb="01579B"/><name val="Segoe UI"/></font>
+              </fonts>
+              <fills count="4">
+                <fill><patternFill patternType="none"/></fill>
+                <fill><patternFill patternType="gray125"/></fill>
+                <fill>
+                  <patternFill patternType="solid">
+                    <fgColor rgb="FF0288D1"/>
+                    <bgColor rgb="FF0288D1"/>
+                  </patternFill>
+                </fill>
+                <fill>
+                  <patternFill patternType="solid">
+                    <fgColor rgb="FFE1F5FE"/>
+                    <bgColor rgb="FFE1F5FE"/>
+                  </patternFill>
+                </fill>
+              </fills>
+              <borders count="1">
+                <border><left/><right/><top/><bottom/></border>
+              </borders>
+              <cellStyleXfs count="1">
+                <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+              </cellStyleXfs>
+              <cellXfs count="4">
+                <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+                <xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+                  <alignment horizontal="center" vertical="center" wrapText="1"/>
+                </xf>
+                <xf numFmtId="0" fontId="1" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+                  <alignment horizontal="left" vertical="center"/>
+                </xf>
+                <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+              </cellXfs>
+              <cellStyles count="1">
+                <cellStyle name="Normal" xfId="0" builtinId="0"/>
+              </cellStyles>
+            </styleSheet>
+        """.trimIndent()
 
         return try {
             val file = File(context.cacheDir, filename)
-            file.writeText(sb.toString(), Charsets.UTF_8)
+            java.util.zip.ZipOutputStream(java.io.BufferedOutputStream(java.io.FileOutputStream(file))).use { zos ->
+                fun addEntry(name: String, content: String) {
+                    zos.putNextEntry(java.util.zip.ZipEntry(name))
+                    zos.write(content.toByteArray(Charsets.UTF_8))
+                    zos.closeEntry()
+                }
+                addEntry("[Content_Types].xml", contentTypesXml)
+                addEntry("_rels/.rels", relsXml)
+                addEntry("xl/workbook.xml", workbookXml)
+                addEntry("xl/_rels/workbook.xml.rels", workbookRelsXml)
+                addEntry("xl/styles.xml", stylesXml)
+                addEntry("xl/worksheets/sheet1.xml", sheet1.toString())
+                addEntry("xl/worksheets/sheet2.xml", sheet2.toString())
+                addEntry("xl/worksheets/sheet3.xml", sheet3.toString())
+            }
             file
         } catch (e: Exception) {
             e.printStackTrace()
@@ -1200,12 +1232,12 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 file
             )
             val isPdf = file.name.endsWith(".pdf")
-            val isXls = file.name.endsWith(".xls")
+            val isXls = file.name.endsWith(".xls") || file.name.endsWith(".xlsx")
             val isZip = file.name.endsWith(".zip")
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = when {
                     isPdf -> "application/pdf"
-                    isXls -> "application/vnd.ms-excel"
+                    isXls -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     isZip -> "application/zip"
                     else -> "text/comma-separated-values"
                 }
