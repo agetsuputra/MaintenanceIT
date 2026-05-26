@@ -5,6 +5,13 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -368,7 +375,7 @@ enum class SubScreen {
     AddMaintenance
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -376,6 +383,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var currentSubScreen by remember { mutableStateOf(SubScreen.List) }
     var showSplash by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
+    var userMenuExpanded by remember { mutableStateOf(false) }
+    var hamburgerMenuExpanded by remember { mutableStateOf(false) }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -600,7 +609,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     )
                 }
             },
-            gesturesEnabled = true
+            gesturesEnabled = false
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Scaffold(
@@ -613,9 +622,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            if (currentSubScreen == SubScreen.List) {
-                                Spacer(modifier = Modifier.statusBarsPadding().height(68.dp))
-                            }
                             when (currentTab) {
                                 AppTab.Dashboard -> {
                                     when (currentSubScreen) {
@@ -819,7 +825,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
                 // 2. Floating Buttons (on top of everything else)
                 if (currentSubScreen == SubScreen.List) {
-                    var userMenuExpanded by remember { mutableStateOf(false) }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -830,7 +835,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     ) {
                         FloatingActionButton(
                             onClick = {
-                                scope.launch { drawerState.open() }
+                                hamburgerMenuExpanded = true
                             },
                             shape = CircleShape,
                             containerColor = MaterialTheme.colorScheme.surface,
@@ -860,59 +865,24 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     fontSize = 16.sp
                                 )
                             }
-                            DropdownMenu(
-                                expanded = userMenuExpanded,
-                                onDismissRequest = { userMenuExpanded = false }
-                            ) {
-                                Text(
-                                    text = "Halo, $currentUsername!",
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Text(
-                                    text = "Role: $currentUserRole",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                DropdownMenuItem(
-                                    text = { Text("Manajemen User") },
-                                    onClick = {
-                                        userMenuExpanded = false
-                                        currentTab = AppTab.UserManagement
-                                        currentSubScreen = SubScreen.List
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.ManageAccounts, contentDescription = null) },
-                                    modifier = Modifier.testTag("menu_user_management")
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Log Out") },
-                                    onClick = {
-                                        currentUsername = ""
-                                        currentUserRole = ""
-                                        userMenuExpanded = false
-                                        currentTab = AppTab.Dashboard
-                                        currentSubScreen = SubScreen.List
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
-                                    modifier = Modifier.testTag("menu_logout")
-                                )
-                            }
                         }
                     }
                 }
 
                 // 3. Floating Bottom Search Bar
+                val searchBarBottomOffset = if (WindowInsets.isImeVisible) {
+                    0.dp
+                } else {
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                }
+
                 AnimatedVisibility(
                     visible = (currentTab == AppTab.Dashboard && currentSubScreen == SubScreen.List),
                     enter = fadeIn(),
                     exit = fadeOut(),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .imePadding()
+                        .padding(bottom = searchBarBottomOffset)
                         .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                 ) {
                     Card(
@@ -968,6 +938,244 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     imageVector = Icons.Default.QrCodeScanner,
                                     contentDescription = "Scan QR/Barcode",
                                     tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Custom Contextual Popup Menu
+                AnimatedVisibility(
+                    visible = userMenuExpanded,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 180, easing = LinearOutSlowInEasing)) +
+                            scaleIn(initialScale = 0.92f, transformOrigin = TransformOrigin(0.95f, 0.05f), animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 150)) +
+                            scaleOut(targetScale = 0.92f, transformOrigin = TransformOrigin(0.95f, 0.05f), animationSpec = tween(durationMillis = 150)),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.08f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { userMenuExpanded = false }
+                    ) {
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                            ),
+                            modifier = Modifier
+                                .statusBarsPadding()
+                                .padding(top = 12.dp, end = 16.dp)
+                                .width(240.dp)
+                                .align(Alignment.TopEnd)
+                                .clickable(enabled = false) {}
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "Halo, $currentUsername!",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Role: $currentUserRole",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                Divider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                                
+                                PopupMenuItem(
+                                    text = "Manajemen User",
+                                    icon = Icons.Default.ManageAccounts,
+                                    onClick = {
+                                        userMenuExpanded = false
+                                        currentTab = AppTab.UserManagement
+                                        currentSubScreen = SubScreen.List
+                                    },
+                                    testTag = "menu_user_management"
+                                )
+                                
+                                PopupMenuItem(
+                                    text = "Log Out",
+                                    icon = Icons.Default.ExitToApp,
+                                    onClick = {
+                                        currentUsername = ""
+                                        currentUserRole = ""
+                                        userMenuExpanded = false
+                                        currentTab = AppTab.Dashboard
+                                        currentSubScreen = SubScreen.List
+                                    },
+                                    testTag = "menu_logout",
+                                    isDestructive = true
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Custom Left Hamburger Popup Menu
+                AnimatedVisibility(
+                    visible = hamburgerMenuExpanded,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 180, easing = LinearOutSlowInEasing)) +
+                            scaleIn(initialScale = 0.92f, transformOrigin = TransformOrigin(0.05f, 0.05f), animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 150)) +
+                            scaleOut(targetScale = 0.92f, transformOrigin = TransformOrigin(0.05f, 0.05f), animationSpec = tween(durationMillis = 150)),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.08f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { hamburgerMenuExpanded = false }
+                    ) {
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                            ),
+                            modifier = Modifier
+                                .statusBarsPadding()
+                                .padding(top = 12.dp, start = 16.dp)
+                                .width(260.dp)
+                                .align(Alignment.TopStart)
+                                .clickable(enabled = false) {}
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "IT Support Service",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Inventaris & Perawatan",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                Divider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                                
+                                PopupMenuItem(
+                                    text = "Dasbor & Aset",
+                                    icon = Icons.Default.Home,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        currentTab = AppTab.Dashboard
+                                        currentSubScreen = SubScreen.List
+                                    },
+                                    testTag = "menu_dashboard",
+                                    isSelected = (currentTab == AppTab.Dashboard)
+                                )
+                                
+                                PopupMenuItem(
+                                    text = "Perbaikan",
+                                    icon = Icons.Default.Build,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        currentTab = AppTab.Perbaikan
+                                        currentSubScreen = SubScreen.List
+                                    },
+                                    testTag = "menu_perbaikan",
+                                    isSelected = (currentTab == AppTab.Perbaikan)
+                                )
+                                
+                                PopupMenuItem(
+                                    text = "Perawatan Rutin",
+                                    icon = Icons.Default.Settings,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        currentTab = AppTab.Perawatan
+                                        currentSubScreen = SubScreen.List
+                                    },
+                                    testTag = "menu_perawatan",
+                                    isSelected = (currentTab == AppTab.Perawatan)
+                                )
+
+                                Divider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+
+                                PopupMenuItem(
+                                    text = "Manajemen Kategori",
+                                    icon = Icons.Default.Category,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        Toast.makeText(context, "Fitur Manajemen Kategori akan segera hadir", Toast.LENGTH_SHORT).show()
+                                    },
+                                    testTag = "menu_kategori",
+                                    isSelected = false
+                                )
+
+                                PopupMenuItem(
+                                    text = "Ekspor PDF",
+                                    icon = Icons.Default.Share,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        val f = viewModel.exportToPdf(context, "assets")
+                                        if (f != null) {
+                                            viewModel.shareExportFile(context, f)
+                                        } else {
+                                            Toast.makeText(context, "Ekspor gagal!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    testTag = "menu_export",
+                                    isSelected = false
+                                )
+
+                                PopupMenuItem(
+                                    text = "Pengaturan",
+                                    icon = Icons.Default.Tune,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        Toast.makeText(context, "Fitur Pengaturan akan segera hadir", Toast.LENGTH_SHORT).show()
+                                    },
+                                    testTag = "menu_pengaturan",
+                                    isSelected = false
                                 )
                             }
                         }
@@ -1110,7 +1318,12 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .testTag("dashboard_column"),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
+            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 96.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Welcoming card with statistics
@@ -1331,72 +1544,38 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
             .clickable { onClick() }
             .testTag("asset_card_${asset.inventoryNumber}"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
         ) {
-            // Icon representing asset type with matching theme color
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(statusColor.copy(alpha = 0.12f), circleShape())
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val icon = when (asset.type) {
-                    "Laptop" -> Icons.Default.Computer
-                    "PC Desktop" -> Icons.Default.Computer
-                    "Printer" -> Icons.Default.Print
-                    "Network Device" -> Icons.Default.Router
-                    else -> Icons.Default.Build
-                }
-                Icon(icon, contentDescription = null, tint = statusColor)
-            }
-
-            Spacer(Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = asset.name,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "ID: ${asset.inventoryNumber}",
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelMedium
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(2.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = asset.location,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = asset.name,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "Inventaris: ${asset.inventoryNumber}",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 0.5.sp
                     )
                 }
-            }
 
-            // Status Badge
-            Column(horizontalAlignment = Alignment.End) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = statusColor.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, statusColor.copy(alpha = 0.3f))
+                    color = statusColor.copy(alpha = 0.12f),
                 ) {
                     Text(
                         text = asset.status,
@@ -1406,13 +1585,48 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
-                Spacer(Modifier.height(8.dp))
-                Icon(
-                    Icons.Default.Info,
-                    contentDescription = "Details",
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                    modifier = Modifier.size(20.dp)
-                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Lokasi
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "Lokasi",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = asset.location,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Kategori
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Category,
+                        contentDescription = "Kategori",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = asset.type,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -2218,7 +2432,8 @@ fun RepairsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .statusBarsPadding()
+            .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
             .testTag("repairs_screen")
     ) {
         Text(
@@ -3292,7 +3507,8 @@ fun MaintenanceScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .statusBarsPadding()
+            .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
             .testTag("maintenances_screen")
     ) {
         Text(
@@ -5066,7 +5282,8 @@ fun UserManagementScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .statusBarsPadding()
+            .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
             .testTag("user_management_screen")
     ) {
         Row(
@@ -5357,4 +5574,64 @@ fun UserEditorDialog(
             }
         }
     )
+}
+
+@Composable
+fun PopupMenuItem(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    testTag: String,
+    isDestructive: Boolean = false,
+    isSelected: Boolean = false
+) {
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+    } else {
+        Color.Transparent
+    }
+    val contentColor = if (isDestructive) {
+        MaterialTheme.colorScheme.error
+    } else if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val iconColor = if (isDestructive) {
+        MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
+    } else if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
 }

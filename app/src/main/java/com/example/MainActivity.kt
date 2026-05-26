@@ -57,14 +57,10 @@ class MainActivity : FragmentActivity() {
         
         setContent {
             MyApplicationTheme {
-                Scaffold(
+                MainScreen(
+                    viewModel = viewModel,
                     modifier = Modifier.fillMaxSize()
-                ) { innerPadding ->
-                    MainScreen(
-                        viewModel = viewModel,
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                )
             }
         }
     }
