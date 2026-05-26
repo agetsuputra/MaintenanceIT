@@ -412,6 +412,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     
     var fetchedLiveLocation by remember { mutableStateOf("IT Office Desk") }
     var currentCameraCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
+    var isSearchingGps by remember { mutableStateOf(false) }
+
     val systemCameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
@@ -422,7 +424,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 location = fetchedLiveLocation,
                 dateStr = currentDateStr
             )
-            currentCameraCallback?.invoke(compressedBase64)
+            val combinedStr = "$compressedBase64|||$fetchedLiveLocation|||$currentDateStr"
+            currentCameraCallback?.invoke(combinedStr)
         }
         currentCameraCallback = null
     }
@@ -430,10 +433,17 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     val systemCameraOpener: ((String) -> Unit) -> Unit = remember {
         { callback ->
             currentCameraCallback = callback
-            android.widget.Toast.makeText(context, "Mencari lokasi GPS...", android.widget.Toast.LENGTH_SHORT).show()
+            isSearchingGps = true
             fetchRealtimeLocation(context) { locationResult ->
                 fetchedLiveLocation = locationResult
-                systemCameraLauncher.launch()
+                isSearchingGps = false
+                (context as? android.app.Activity)?.runOnUiThread {
+                    try {
+                        systemCameraLauncher.launch()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
             }
         }
     }
@@ -442,6 +452,35 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
     var currentUsername by rememberSaveable { mutableStateOf("") }
     var currentUserRole by rememberSaveable { mutableStateOf("") }
+
+    if (isSearchingGps) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { isSearchingGps = false }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                modifier = Modifier.width(280.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Mencari lokasi GPS...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
 
     if (showSplash) {
         Box(
@@ -1069,7 +1108,7 @@ fun DashboardScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Cari aset berdasarkan kode, nama, lokasi...") },
+                placeholder = { Text("Cari Aset...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     IconButton(
@@ -1088,10 +1127,10 @@ fun DashboardScreen(
                     }
                 },
                 singleLine = true,
+                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("tf_search_asset")
-                    .clip(RoundedCornerShape(12.dp)),
+                    .testTag("tf_search_asset"),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                 )
@@ -2377,38 +2416,33 @@ fun AddRepairForm(
                         style = MaterialTheme.typography.labelLarge
                     )
                     Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = invNum,
-                            onValueChange = { invNum = it.trim().uppercase() },
-                            placeholder = { Text("No. Inventaris (Contoh: INV-PC-001)") },
-                            singleLine = true,
-                            modifier = Modifier
-                                .weight(1.8f)
-                                .testTag("repair_tf_inv"),
-                            leadingIcon = { Icon(Icons.Default.Computer, contentDescription = null) }
-                        )
-
-                        Button(
-                            onClick = {
-                                onOpenScanner { code -> invNum = code }
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier
-                                .weight(1.2f)
-                                .height(56.dp)
-                                .testTag("btn_scan_barcode"),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Scan", fontSize = 11.sp)
-                        }
-                    }
+                    OutlinedTextField(
+                        value = invNum,
+                        onValueChange = { invNum = it.trim().uppercase() },
+                        label = { Text("Nomor Inventaris Perangkat") },
+                        placeholder = { Text("No. Inventaris (Contoh: INV-PC-001)") },
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    onOpenScanner { code ->
+                                        invNum = code.trim().uppercase()
+                                    }
+                                },
+                                modifier = Modifier.testTag("repair_btn_inv_scan")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = "Scan QR/Barcode",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("repair_tf_inv"),
+                        leadingIcon = { Icon(Icons.Default.Computer, contentDescription = null) }
+                    )
                 }
             }
         }
@@ -2576,7 +2610,7 @@ fun AddRepairForm(
                             }
                         } else {
                             Button(
-                                onClick = { onOpenCamera { photo -> photoBefore = "$photo|||$assetLocation|||$currentDateStr" } },
+                                onClick = { onOpenCamera { photo -> photoBefore = photo } },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                             ) {
@@ -2587,7 +2621,7 @@ fun AddRepairForm(
                         }
                     }
 
-                    Divider()
+                    HorizontalDivider()
 
                     // 2. Photo After
                     Column {
@@ -2612,7 +2646,7 @@ fun AddRepairForm(
                             }
                         } else {
                             Button(
-                                onClick = { onOpenCamera { photo -> photoAfter = "$photo|||$assetLocation|||$currentDateStr" } },
+                                onClick = { onOpenCamera { photo -> photoAfter = photo } },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                                 enabled = status == "Selesai" || photoBefore != null
@@ -2624,7 +2658,7 @@ fun AddRepairForm(
                         }
                     }
 
-                    Divider()
+                    HorizontalDivider()
 
                     // 3. Photo with User
                     Column {
@@ -2649,7 +2683,7 @@ fun AddRepairForm(
                             }
                         } else {
                             Button(
-                                onClick = { onOpenCamera { photo -> photoUser = "$photo|||$assetLocation|||$currentDateStr" } },
+                                onClick = { onOpenCamera { photo -> photoUser = photo } },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 enabled = status == "Selesai" || photoBefore != null
@@ -2969,7 +3003,7 @@ fun RepairDetailDialog(
                                         }
                                     } else {
                                         Button(
-                                            onClick = { onOpenCamera { photo -> localPhotoAfter = "$photo|||${getDeviceLocation(context, "Selesai - " + assetLocation)}|||$currentDateStr" } },
+                                            onClick = { onOpenCamera { photo -> localPhotoAfter = photo } },
                                             modifier = Modifier.fillMaxWidth(),
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
                                         ) {
@@ -2995,7 +3029,7 @@ fun RepairDetailDialog(
                                         }
                                     } else {
                                         Button(
-                                            onClick = { onOpenCamera { photo -> localPhotoUser = "$photo|||${getDeviceLocation(context, "Verifikasi - " + assetLocation)}|||$currentDateStr" } },
+                                            onClick = { onOpenCamera { photo -> localPhotoUser = photo } },
                                             modifier = Modifier.fillMaxWidth(),
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                         ) {
@@ -3437,38 +3471,33 @@ fun AddMaintenanceForm(
                         style = MaterialTheme.typography.labelLarge
                     )
                     Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = invNum,
-                            onValueChange = { invNum = it.trim().uppercase() },
-                            placeholder = { Text("No. Inventaris (Contoh: INV-PR-004)") },
-                            singleLine = true,
-                            modifier = Modifier
-                                .weight(1.8f)
-                                .testTag("maint_tf_inv"),
-                            leadingIcon = { Icon(Icons.Default.Computer, contentDescription = null) }
-                        )
-
-                        Button(
-                            onClick = {
-                                onOpenScanner { code -> invNum = code }
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier
-                                        .weight(1.2f)
-                                        .height(56.dp)
-                                        .testTag("btn_maint_scan"),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Scan", fontSize = 11.sp)
-                        }
-                    }
+                    OutlinedTextField(
+                        value = invNum,
+                        onValueChange = { invNum = it.trim().uppercase() },
+                        label = { Text("Nomor Inventaris Perangkat") },
+                        placeholder = { Text("No. Inventaris (Contoh: INV-PR-004)") },
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    onOpenScanner { code ->
+                                        invNum = code.trim().uppercase()
+                                    }
+                                },
+                                modifier = Modifier.testTag("maint_btn_inv_scan")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = "Scan QR/Barcode",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("maint_tf_inv"),
+                        leadingIcon = { Icon(Icons.Default.Computer, contentDescription = null) }
+                    )
                 }
             }
         }
@@ -3607,7 +3636,7 @@ fun AddMaintenanceForm(
                             }
                         } else {
                             Button(
-                                onClick = { onOpenCamera { photo -> photoBefore = "$photo|||$assetLocation|||$currentDateStr" } },
+                                onClick = { onOpenCamera { photo -> photoBefore = photo } },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                             ) {
@@ -3618,7 +3647,7 @@ fun AddMaintenanceForm(
                         }
                     }
 
-                    Divider()
+                    HorizontalDivider()
 
                     // 2. Photo After
                     Column {
@@ -3643,7 +3672,7 @@ fun AddMaintenanceForm(
                             }
                         } else {
                             Button(
-                                onClick = { onOpenCamera { photo -> photoAfter = "$photo|||$assetLocation|||$currentDateStr" } },
+                                onClick = { onOpenCamera { photo -> photoAfter = photo } },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                                 enabled = status == "Selesai" || photoBefore != null
@@ -3655,7 +3684,7 @@ fun AddMaintenanceForm(
                         }
                     }
 
-                    Divider()
+                    HorizontalDivider()
 
                     // 3. Photo with User
                     Column {
@@ -3680,7 +3709,7 @@ fun AddMaintenanceForm(
                             }
                         } else {
                             Button(
-                                onClick = { onOpenCamera { photo -> photoUser = "$photo|||$assetLocation|||$currentDateStr" } },
+                                onClick = { onOpenCamera { photo -> photoUser = photo } },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 enabled = status == "Selesai" || photoBefore != null
@@ -3986,7 +4015,7 @@ fun MaintenanceDetailDialog(
                                         }
                                     } else {
                                         Button(
-                                            onClick = { onOpenCamera { photo -> localPhotoAfter = "$photo|||${getDeviceLocation(context, "Selesai - " + assetLocation)}|||$currentDateStr" } },
+                                            onClick = { onOpenCamera { photo -> localPhotoAfter = photo } },
                                             modifier = Modifier.fillMaxWidth(),
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
                                         ) {
@@ -4012,7 +4041,7 @@ fun MaintenanceDetailDialog(
                                         }
                                     } else {
                                         Button(
-                                            onClick = { onOpenCamera { photo -> localPhotoUser = "$photo|||${getDeviceLocation(context, "Verifikasi - " + assetLocation)}|||$currentDateStr" } },
+                                            onClick = { onOpenCamera { photo -> localPhotoUser = photo } },
                                             modifier = Modifier.fillMaxWidth(),
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                         ) {
@@ -4746,7 +4775,8 @@ fun LoginScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .padding(16.dp),
+                .padding(16.dp)
+                .imePadding(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)

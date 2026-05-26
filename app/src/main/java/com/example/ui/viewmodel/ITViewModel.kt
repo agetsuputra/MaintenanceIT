@@ -572,7 +572,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         assetName: String,
         dateFormat: SimpleDateFormat
     ) {
-        val cardHeight = 210f
+        val cardHeight = 135f
         if (writer.currentY + cardHeight > writer.bottomLimit) {
             writer.newPage("LAPORAN PERBAIKAN TIM IT SUPPORT", "Dokumen Resmi Perbaikan Aset")
         }
@@ -669,7 +669,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         }
 
         fun drawPhoto(photoStr: String?, label: String, photoX: Float, photoY: Float) {
-            val rectBg = RectF(photoX, photoY, photoX + 70f, photoY + 48f)
+            val rectBg = RectF(photoX, photoY, photoX + 54f, photoY + 36f)
             val rectPaint = Paint().apply {
                 color = 0xFFF5F5F5.toInt()
                 style = Paint.Style.FILL
@@ -684,45 +684,46 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
 
             val lblPaint = Paint().apply {
                 color = Color.DKGRAY
-                textSize = 6.5f
+                textSize = 6f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 isAntiAlias = true
+                textAlign = Paint.Align.CENTER
             }
-            canvas.drawText(label, photoX + 76f, photoY + 12f, lblPaint)
+            canvas.drawText(label, photoX + 27f, photoY + 44f, lblPaint)
 
             val (urlPart, locPart, datePart) = parseWatermarkedPhoto(photoStr)
             val imageBitmap = decodeBase64ToBitmap(urlPart)
             if (imageBitmap != null) {
                 val src = Rect(0, 0, imageBitmap.width, imageBitmap.height)
-                val dst = Rect((photoX + 1f).toInt(), (photoY + 1f).toInt(), (photoX + 69f).toInt(), (photoY + 47f).toInt())
+                val dst = Rect((photoX + 0.5f).toInt(), (photoY + 0.5f).toInt(), (photoX + 53.5f).toInt(), (photoY + 35.5f).toInt())
                 canvas.drawBitmap(imageBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
 
-                val txt = "${locPart.take(14)}, ${datePart.take(10)}"
+                val txt = "${locPart.take(12)}, ${datePart.take(10)}"
                 val overlayPaint = Paint().apply {
                     color = 0xAA000000.toInt()
                     style = Paint.Style.FILL
                 }
-                canvas.drawRect(RectF(photoX + 1f, photoY + 39f, photoX + 69f, photoY + 47f), overlayPaint)
+                canvas.drawRect(RectF(photoX + 0.5f, photoY + 28f, photoX + 53.5f, photoY + 35.5f), overlayPaint)
                 val wmTxtPaint = Paint().apply {
                     color = Color.WHITE
-                    textSize = 4f
+                    textSize = 3f
                     isAntiAlias = true
                 }
-                canvas.drawText(txt, photoX + 4f, photoY + 45f, wmTxtPaint)
+                canvas.drawText(txt, photoX + 2f, photoY + 33.5f, wmTxtPaint)
             } else {
                 val emptyPaint = Paint().apply {
                     color = Color.GRAY
-                    textSize = 6.5f
+                    textSize = 5.5f
                     isAntiAlias = true
                     textAlign = Paint.Align.CENTER
                 }
-                canvas.drawText("No Photo", photoX + 35f, photoY + 28f, emptyPaint)
+                canvas.drawText("No Photo", photoX + 27f, photoY + 20f, emptyPaint)
             }
         }
 
-        drawPhoto(r.photoBefore, "SEBELUM", 375f, y + 32f)
-        drawPhoto(r.photoAfter, "SESUDAH", 375f, y + 84f)
-        drawPhoto(r.photoUser, "PENERIMA", 375f, y + 136f)
+        drawPhoto(r.photoBefore, "SEBELUM", 365f, y + 36f)
+        drawPhoto(r.photoAfter, "SESUDAH", 427f, y + 36f)
+        drawPhoto(r.photoUser, "PENERIMA", 489f, y + 36f)
 
         writer.currentY += cardHeight
     }
@@ -733,7 +734,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         assetName: String,
         dateFormat: SimpleDateFormat
     ) {
-        val cardHeight = 210f
+        val cardHeight = 135f
         if (writer.currentY + cardHeight > writer.bottomLimit) {
             writer.newPage("LAPORAN PERAWATAN TIM IT SUPPORT", "Dokumen Resmi Perawatan Rutin")
         }
@@ -827,7 +828,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         drawField("Teknisi:", m.technician)
 
         fun drawPhoto(photoStr: String?, label: String, photoX: Float, photoY: Float) {
-            val rectBg = RectF(photoX, photoY, photoX + 70f, photoY + 48f)
+            val rectBg = RectF(photoX, photoY, photoX + 54f, photoY + 36f)
             val rectPaint = Paint().apply {
                 color = 0xFFF5F5F5.toInt()
                 style = Paint.Style.FILL
@@ -842,45 +843,46 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
 
             val lblPaint = Paint().apply {
                 color = Color.DKGRAY
-                textSize = 6.5f
+                textSize = 6f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 isAntiAlias = true
+                textAlign = Paint.Align.CENTER
             }
-            canvas.drawText(label, photoX + 76f, photoY + 12f, lblPaint)
+            canvas.drawText(label, photoX + 27f, photoY + 44f, lblPaint)
 
             val (urlPart, locPart, datePart) = parseWatermarkedPhoto(photoStr)
             val imageBitmap = decodeBase64ToBitmap(urlPart)
             if (imageBitmap != null) {
                 val src = Rect(0, 0, imageBitmap.width, imageBitmap.height)
-                val dst = Rect((photoX + 1f).toInt(), (photoY + 1f).toInt(), (photoX + 69f).toInt(), (photoY + 47f).toInt())
+                val dst = Rect((photoX + 0.5f).toInt(), (photoY + 0.5f).toInt(), (photoX + 53.5f).toInt(), (photoY + 35.5f).toInt())
                 canvas.drawBitmap(imageBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
 
-                val txt = "${locPart.take(14)}, ${datePart.take(10)}"
+                val txt = "${locPart.take(12)}, ${datePart.take(10)}"
                 val overlayPaint = Paint().apply {
                     color = 0xAA000000.toInt()
                     style = Paint.Style.FILL
                 }
-                canvas.drawRect(RectF(photoX + 1f, photoY + 39f, photoX + 69f, photoY + 47f), overlayPaint)
+                canvas.drawRect(RectF(photoX + 0.5f, photoY + 28f, photoX + 53.5f, photoY + 35.5f), overlayPaint)
                 val wmTxtPaint = Paint().apply {
                     color = Color.WHITE
-                    textSize = 4f
+                    textSize = 3f
                     isAntiAlias = true
                 }
-                canvas.drawText(txt, photoX + 4f, photoY + 45f, wmTxtPaint)
+                canvas.drawText(txt, photoX + 2f, photoY + 33.5f, wmTxtPaint)
             } else {
                 val emptyPaint = Paint().apply {
                     color = Color.GRAY
-                    textSize = 6.5f
+                    textSize = 5.5f
                     isAntiAlias = true
                     textAlign = Paint.Align.CENTER
                 }
-                canvas.drawText("No Photo", photoX + 35f, photoY + 28f, emptyPaint)
+                canvas.drawText("No Photo", photoX + 27f, photoY + 20f, emptyPaint)
             }
         }
 
-        drawPhoto(m.photoBefore, "SEBELUM", 375f, y + 32f)
-        drawPhoto(m.photoAfter, "SESUDAH", 375f, y + 84f)
-        drawPhoto(m.photoUser, "PENERIMA", 375f, y + 136f)
+        drawPhoto(m.photoBefore, "SEBELUM", 365f, y + 36f)
+        drawPhoto(m.photoAfter, "SESUDAH", 427f, y + 36f)
+        drawPhoto(m.photoUser, "PENERIMA", 489f, y + 36f)
 
         writer.currentY += cardHeight
     }
@@ -1043,23 +1045,6 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 dateFormat.format(Date(a.createdAt))
             ), listOf(0))
         }
-        
-        sheet1.writeEmptyRow()
-        sheet1.writeEmptyRow()
-        
-        sheet1.writeRow(25, listOf("RIWAYAT PERUBAHAN & LOG UPDATE INVENTARIS", null, null, null, null, null, null), listOf(2))
-        sheet1.writeRow(22, listOf("Waktu Update", "No. Inventaris", "Lokasi Lama > Baru", "Status Lama > Baru", "Komentar Lama", "Komentar Baru", "Sebab Rusak Permanen"), listOf(1))
-        logs.forEach { l ->
-            sheet1.writeRow(22, listOf(
-                dateFormat.format(Date(l.updateTime)),
-                l.inventoryNumber,
-                "${l.oldLocation} > ${l.newLocation}",
-                "${l.oldStatus} > ${l.newStatus}",
-                l.oldDescription ?: "",
-                l.newDescription ?: "",
-                l.reasonForPermanentDamage ?: ""
-            ), listOf(0))
-        }
         sheet1.endSheet(protect = true)
 
         // SHEET 2: Perbaikan
@@ -1112,6 +1097,25 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         }
         sheet3.endSheet(protect = true)
 
+        // SHEET 4: Riwayat Aset (Log Update)
+        val sheet4 = SheetWriter()
+        sheet4.startSheet(listOf(22, 18, 25, 25, 25, 25, 25))
+        sheet4.writeRow(28, listOf("RIWAYAT PERUBAHAN & LOG UPDATE INVENTARIS", null, null, null, null, null, null), listOf(2))
+        sheet4.writeEmptyRow()
+        sheet4.writeRow(22, listOf("Waktu Update", "No. Inventaris", "Lokasi Lama > Baru", "Status Lama > Baru", "Komentar Lama", "Komentar Baru", "Sebab Rusak Permanen"), listOf(1))
+        logs.forEach { l ->
+            sheet4.writeRow(22, listOf(
+                dateFormat.format(Date(l.updateTime)),
+                l.inventoryNumber,
+                "${l.oldLocation} > ${l.newLocation}",
+                "${l.oldStatus} > ${l.newStatus}",
+                l.oldDescription ?: "",
+                l.newDescription ?: "",
+                l.reasonForPermanentDamage ?: ""
+            ), listOf(0))
+        }
+        sheet4.endSheet(protect = true)
+
         val contentTypesXml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -1121,6 +1125,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
               <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
               <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
               <Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+              <Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
               <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
             </Types>
         """.trimIndent()
@@ -1139,9 +1144,10 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 <sheet name="Inventaris" sheetId="1" r:id="rId1"/>
                 <sheet name="Perbaikan" sheetId="2" r:id="rId2"/>
                 <sheet name="Perawatan" sheetId="3" r:id="rId3"/>
+                <sheet name="Riwayat Aset" sheetId="4" r:id="rId4"/>
               </sheets>
             </workbook>
-        """.trimIndent()
+         """.trimIndent()
 
         val workbookRelsXml = """
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1149,7 +1155,8 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
               <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
               <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
               <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/>
-              <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+              <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/>
+              <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
             </Relationships>
         """.trimIndent()
 
@@ -1167,14 +1174,14 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 <fill><patternFill patternType="gray125"/></fill>
                 <fill>
                   <patternFill patternType="solid">
-                    <fgColor rgb="FF0288D1"/>
-                    <bgColor rgb="FF0288D1"/>
+                     <fgColor rgb="FF0288D1"/>
+                     <bgColor rgb="FF0288D1"/>
                   </patternFill>
                 </fill>
                 <fill>
                   <patternFill patternType="solid">
-                    <fgColor rgb="FFE1F5FE"/>
-                    <bgColor rgb="FFE1F5FE"/>
+                     <fgColor rgb="FFE1F5FE"/>
+                     <bgColor rgb="FFE1F5FE"/>
                   </patternFill>
                 </fill>
               </fills>
@@ -1216,6 +1223,7 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
                 addEntry("xl/worksheets/sheet1.xml", sheet1.toString())
                 addEntry("xl/worksheets/sheet2.xml", sheet2.toString())
                 addEntry("xl/worksheets/sheet3.xml", sheet3.toString())
+                addEntry("xl/worksheets/sheet4.xml", sheet4.toString())
             }
             file
         } catch (e: Exception) {
