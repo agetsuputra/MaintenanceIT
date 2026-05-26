@@ -24,7 +24,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -422,6 +424,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var showingMaintenanceDetail by remember { mutableStateOf<Maintenance?>(null) }
     var showingBarcodeScanner by remember { mutableStateOf<((String) -> Unit)?>(null) } // callback function
     var prefilledInventoryNumber by remember { mutableStateOf<String?>(null) }
+    var prefilledInventoryForAddAsset by remember { mutableStateOf<String?>(null) }
     var showingUpdateAssetDialog by remember { mutableStateOf<Asset?>(null) }
     
     var fetchedLiveLocation by remember { mutableStateOf("IT Office Desk") }
@@ -630,17 +633,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 assets = assets,
                                                 repairs = repairs,
                                                 isFirebaseEnabled = viewModel.isFirebaseEnabled,
-                                                onAddAssetClick = { currentSubScreen = SubScreen.AddAsset },
                                                 onAssetClick = { asset -> showingAssetDetail = asset },
-                                                onExportClick = {
-                                                    val f = viewModel.exportToPdf(context, "assets")
-                                                    if (f != null) {
-                                                        viewModel.shareExportFile(context, f)
-                                                    } else {
-                                                        Toast.makeText(context, "Ekspor gagal!", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                },
-                                                onOpenScanner = { callback -> showingBarcodeScanner = callback },
                                                 searchQuery = searchQuery
                                             )
                                         }
@@ -649,12 +642,18 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 onSave = { asset ->
                                                     viewModel.saveAsset(asset) {
                                                         currentSubScreen = SubScreen.List
+                                                        prefilledInventoryForAddAsset = null
+                                                        showingAssetDetail = asset
                                                         Toast.makeText(context, "Aset berhasil disimpan!", Toast.LENGTH_SHORT).show()
                                                     }
                                                 },
-                                                onCancel = { currentSubScreen = SubScreen.List },
+                                                onCancel = { 
+                                                    currentSubScreen = SubScreen.List
+                                                    prefilledInventoryForAddAsset = null
+                                                },
                                                 assetList = assets,
-                                                onOpenScanner = { callback -> showingBarcodeScanner = callback }
+                                                onOpenScanner = { callback -> showingBarcodeScanner = callback },
+                                                initialInventoryNumber = prefilledInventoryForAddAsset
                                             )
                                         }
                                         else -> {}
@@ -671,15 +670,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 onStartDateChange = { viewModel.filterStartDate.value = it },
                                                 onEndDateChange = { viewModel.filterEndDate.value = it },
                                                 onRepairClick = { showingRepairDetail = it },
-                                                onAddRepairClick = { currentSubScreen = SubScreen.AddRepair },
-                                                onExportClick = {
-                                                    val f = viewModel.exportToPdf(context, "repairs")
-                                                    if (f != null) {
-                                                        viewModel.shareExportFile(context, f)
-                                                    } else {
-                                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                }
+                                                onAddRepairClick = { currentSubScreen = SubScreen.AddRepair }
                                             )
                                         }
                                         SubScreen.AddRepair -> {
@@ -716,15 +707,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 onStartDateChange = { viewModel.filterStartDate.value = it },
                                                 onEndDateChange = { viewModel.filterEndDate.value = it },
                                                 onMaintClick = { showingMaintenanceDetail = it },
-                                                onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance },
-                                                onExportClick = {
-                                                    val f = viewModel.exportToPdf(context, "maintenances")
-                                                    if (f != null) {
-                                                        viewModel.shareExportFile(context, f)
-                                                    } else {
-                                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                }
+                                                onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance }
                                             )
                                         }
                                         SubScreen.AddMaintenance -> {
@@ -762,14 +745,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                         onDeleteUser = { user ->
                                             viewModel.deleteUser(user) {
                                                 Toast.makeText(context, "User berhasil dihapus!", Toast.LENGTH_SHORT).show()
-                                            }
-                                        },
-                                        onExportAllLogs = {
-                                            val f = viewModel.exportAllLogsToExcel(context)
-                                            if (f != null) {
-                                                viewModel.shareExportFile(context, f)
-                                            } else {
-                                                Toast.makeText(context, "Ekspor log sistem gagal!", Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     )
@@ -870,10 +845,11 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 }
 
                 // 3. Floating Bottom Search Bar
+                val keyboardController = LocalSoftwareKeyboardController.current
                 val searchBarBottomOffset = if (WindowInsets.isImeVisible) {
-                    0.dp
+                    16.dp
                 } else {
-                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
                 }
 
                 AnimatedVisibility(
@@ -882,8 +858,9 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     exit = fadeOut(),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .windowInsetsPadding(WindowInsets.ime)
                         .padding(bottom = searchBarBottomOffset)
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        .padding(horizontal = 16.dp)
                 ) {
                     Card(
                         shape = RoundedCornerShape(28.dp),
@@ -904,16 +881,10 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 .padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
                             TextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
-                                placeholder = { Text("Cari nomor atau nama...") },
+                                placeholder = { Text("cari kode atau nama...") },
                                 singleLine = true,
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
@@ -922,6 +893,24 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     focusedIndicatorColor = Color.Transparent,
                                     unfocusedIndicatorColor = Color.Transparent
                                 ),
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Search
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onSearch = {
+                                        if (searchQuery.isNotBlank()) {
+                                            val trimmedQuery = searchQuery.trim()
+                                            val matched = assets.firstOrNull { it.inventoryNumber.equals(trimmedQuery, ignoreCase = true) }
+                                            if (matched != null) {
+                                                showingAssetDetail = matched
+                                            } else {
+                                                prefilledInventoryForAddAsset = trimmedQuery
+                                                currentSubScreen = SubScreen.AddAsset
+                                            }
+                                            keyboardController?.hide()
+                                        }
+                                    }
+                                ),
                                 modifier = Modifier
                                     .weight(1f)
                                     .testTag("tf_search_asset")
@@ -929,7 +918,16 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             IconButton(
                                 onClick = {
                                     showingBarcodeScanner = { code ->
-                                        searchQuery = code
+                                        val trimmedCode = code.trim()
+                                        if (trimmedCode.isNotEmpty()) {
+                                            val matched = assets.firstOrNull { it.inventoryNumber.equals(trimmedCode, ignoreCase = true) }
+                                            if (matched != null) {
+                                                showingAssetDetail = matched
+                                            } else {
+                                                prefilledInventoryForAddAsset = trimmedCode
+                                                currentSubScreen = SubScreen.AddAsset
+                                            }
+                                        }
                                     }
                                 },
                                 modifier = Modifier.testTag("btn_dashboard_scan")
@@ -1152,7 +1150,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 )
 
                                 PopupMenuItem(
-                                    text = "Ekspor PDF",
+                                    text = "Export PDF Inventaris",
                                     icon = Icons.Default.Share,
                                     onClick = {
                                         hamburgerMenuExpanded = false
@@ -1163,7 +1161,55 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                             Toast.makeText(context, "Ekspor gagal!", Toast.LENGTH_SHORT).show()
                                         }
                                     },
-                                    testTag = "menu_export",
+                                    testTag = "menu_export_assets",
+                                    isSelected = false
+                                )
+
+                                PopupMenuItem(
+                                    text = "Export PDF Perbaikan",
+                                    icon = Icons.Default.Share,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        val f = viewModel.exportToPdf(context, "repairs")
+                                        if (f != null) {
+                                            viewModel.shareExportFile(context, f)
+                                        } else {
+                                            Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    testTag = "menu_export_repairs",
+                                    isSelected = false
+                                )
+
+                                PopupMenuItem(
+                                    text = "Export PDF Perawatan",
+                                    icon = Icons.Default.Share,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        val f = viewModel.exportToPdf(context, "maintenances")
+                                        if (f != null) {
+                                            viewModel.shareExportFile(context, f)
+                                        } else {
+                                            Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    testTag = "menu_export_maintenances",
+                                    isSelected = false
+                                )
+
+                                PopupMenuItem(
+                                    text = "Export Log Excell",
+                                    icon = Icons.Default.Share,
+                                    onClick = {
+                                        hamburgerMenuExpanded = false
+                                        val f = viewModel.exportAllLogsToExcel(context)
+                                        if (f != null) {
+                                            viewModel.shareExportFile(context, f)
+                                        } else {
+                                            Toast.makeText(context, "Ekspor log sistem gagal!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    testTag = "menu_export_logs",
                                     isSelected = false
                                 )
 
@@ -1293,17 +1339,20 @@ fun DashboardScreen(
     assets: List<Asset>,
     repairs: List<Repair>,
     isFirebaseEnabled: Boolean,
-    onAddAssetClick: () -> Unit,
     onAssetClick: (Asset) -> Unit,
-    onExportClick: () -> Unit,
-    onOpenScanner: (((String) -> Unit)) -> Unit,
     searchQuery: String
 ) {
-    val filteredAssets = remember(assets, searchQuery) {
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var selectedCategories by remember { mutableStateOf(setOf<String>()) }
+    var filterAllSelected by remember { mutableStateOf(true) }
+
+    val filteredAssets = remember(assets, searchQuery, selectedCategories, filterAllSelected) {
         assets.filter {
-            it.inventoryNumber.contains(searchQuery, ignoreCase = true) ||
+            val matchesSearch = it.inventoryNumber.contains(searchQuery, ignoreCase = true) ||
                     it.name.contains(searchQuery, ignoreCase = true) ||
                     it.location.contains(searchQuery, ignoreCase = true)
+            val matchesCategory = filterAllSelected || selectedCategories.contains(it.type)
+            matchesSearch && matchesCategory
         }
     }
 
@@ -1311,8 +1360,7 @@ fun DashboardScreen(
     val totalAssets = remember(assets) { assets.size }
     val activeAssets = remember(assets) { assets.count { it.status == "Aktif" } }
     val brokenAssets = remember(assets) { assets.count { it.status == "Rusak Permanen" } }
-    val holdRepairs = remember(repairs) { repairs.count { it.status == "Hold" } }
-    val maintenanceAssets = remember(assets) { assets.count { it.status == "Perawatan" } }
+    val holdAssets = remember(assets) { assets.count { it.status == "Hold" || it.status == "Dalam Pengerjaan" } }
 
     LazyColumn(
         modifier = Modifier
@@ -1322,7 +1370,7 @@ fun DashboardScreen(
             start = 16.dp,
             end = 16.dp,
             top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
-            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 96.dp
+            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 76.dp
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -1346,7 +1394,9 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.weight(1f)
                         )
-                        Box(
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(
@@ -1360,20 +1410,22 @@ fun DashboardScreen(
                                 )
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isFirebaseEnabled) Color(0xFF2E7D32) else Color.Red)
+                            )
                             Text(
-                                text = if (isFirebaseEnabled) "🌐 Cloud Sync Aktif" else "💾 Database Lokal",
+                                text = if (isFirebaseEnabled) "Cloud Sync Aktif" else "Database Lokal",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isFirebaseEnabled) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
-                    Text(
-                        "Kelola inventaris, rekam perbaikan kerusakan, dan pelihara status perangkat dengan ringkas.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
-                    )
+
+                    Spacer(Modifier.height(16.dp))
 
                     // Grid stats
                     Row(
@@ -1384,73 +1436,67 @@ fun DashboardScreen(
                             label = "Total Aset",
                             value = totalAssets.toString(),
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).aspectRatio(1f)
                         )
                         StatCard(
                             label = "Aktif",
                             value = activeAssets.toString(),
                             color = Color(0xFF2E7D32),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).aspectRatio(1f)
                         )
                         StatCard(
                             label = "Rusak",
                             value = brokenAssets.toString(),
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).aspectRatio(1f)
                         )
                         StatCard(
-                            label = "Hold / Maint",
-                            value = (holdRepairs + maintenanceAssets).toString(),
+                            label = "Hold",
+                            value = holdAssets.toString(),
                             color = Color(0xFFEF6C00),
-                            modifier = Modifier.weight(1.2f)
+                            modifier = Modifier.weight(1f).aspectRatio(1f)
                         )
                     }
                 }
             }
         }
 
-        // Action Buttons
+        // Heading with Filter button
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = onAddAssetClick,
-                    shape = RoundedCornerShape(12.dp),
+                Text(
+                    "Daftar Seluruh Perangkat (${filteredAssets.size})",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .testTag("btn_add_asset"),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showFilterDialog = true }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Tambah")
-                    Spacer(Modifier.width(8.dp))
-                    Text("Tambah Aset")
-                }
-
-                OutlinedButton(
-                    onClick = onExportClick,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("btn_export_assets"),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Icon(Icons.Default.Share, contentDescription = "Ekspor")
-                    Spacer(Modifier.width(8.dp))
-                    Text("Export PDF")
+                    Icon(
+                        imageVector = Icons.Default.FilterList,
+                        contentDescription = "Filter",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "Filter",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
-        }
-
-        // Heading
-        item {
-            Text(
-                "Daftar Seluruh Perangkat (${filteredAssets.size})",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
         }
 
         // Empty State checking
@@ -1477,7 +1523,7 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "Ketuk tombol 'Tambah Aset' di atas untuk mendaftarkan aset.",
+                            "Silakan ketik nomor inventaris baru di search bar untuk mendaftar.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center
@@ -1492,8 +1538,86 @@ fun DashboardScreen(
         }
 
         item {
-            Spacer(modifier = Modifier.height(100.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    if (showFilterDialog) {
+        val availableCategories = listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
+        AlertDialog(
+            onDismissRequest = { showFilterDialog = false },
+            title = { Text("Filter Kategori Aset", fontWeight = FontWeight.Bold) },
+            text = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    filterAllSelected = !filterAllSelected
+                                    if (filterAllSelected) {
+                                        selectedCategories = emptySet()
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = filterAllSelected,
+                                onCheckedChange = { checked ->
+                                    filterAllSelected = checked
+                                    if (checked) {
+                                        selectedCategories = emptySet()
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Semua Kategori (All)")
+                        }
+                    }
+                    items(availableCategories) { cat ->
+                        val isChecked = !filterAllSelected && selectedCategories.contains(cat)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val current = selectedCategories.toMutableSet()
+                                    if (current.contains(cat)) {
+                                        current.remove(cat)
+                                    } else {
+                                        current.add(cat)
+                                    }
+                                    selectedCategories = current
+                                    filterAllSelected = current.isEmpty()
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = { checked ->
+                                    val current = selectedCategories.toMutableSet()
+                                    if (checked) {
+                                        current.add(cat)
+                                    } else {
+                                        current.remove(cat)
+                                    }
+                                    selectedCategories = current
+                                    filterAllSelected = current.isEmpty()
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(cat)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFilterDialog = false }) {
+                    Text("Terapkan", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
     }
 }
 
@@ -1505,20 +1629,22 @@ fun StatCard(label: String, value: String, color: Color, modifier: Modifier = Mo
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.padding(8.dp).fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = value,
-                fontSize = 20.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = color
+                color = color,
+                textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 text = label,
                 fontSize = 11.sp,
-                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
@@ -1543,8 +1669,9 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
             .fillMaxWidth()
             .clickable { onClick() }
             .testTag("asset_card_${asset.inventoryNumber}"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
@@ -1554,7 +1681,7 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1563,18 +1690,17 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Inventaris: ${asset.inventoryNumber}",
                         fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = 0.5.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = statusColor.copy(alpha = 0.12f),
                 ) {
                     Text(
@@ -1597,34 +1723,34 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Lokasi
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Lokasi",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(14.dp)
+                Column {
+                    Text(
+                        text = "Lokasi",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = asset.location,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
                 // Kategori
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Category,
-                        contentDescription = "Kategori",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(14.dp)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Kategori",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = asset.type,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -1639,12 +1765,13 @@ fun AddAssetForm(
     onSave: (Asset) -> Unit,
     onCancel: () -> Unit,
     assetList: List<Asset>,
-    onOpenScanner: (((String) -> Unit)) -> Unit
+    onOpenScanner: (((String) -> Unit)) -> Unit,
+    initialInventoryNumber: String? = null
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
-    var invNum by remember { mutableStateOf("") }
+    var invNum by remember { mutableStateOf(initialInventoryNumber ?: "") }
     var name by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("Laptop") }
     var location by remember { mutableStateOf("") }
@@ -2399,7 +2526,7 @@ fun RepairsScreen(
     onEndDateChange: (Long) -> Unit,
     onRepairClick: (Repair) -> Unit,
     onAddRepairClick: () -> Unit,
-    onExportClick: () -> Unit
+    onExportClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -3475,7 +3602,7 @@ fun MaintenanceScreen(
     onEndDateChange: (Long) -> Unit,
     onMaintClick: (Maintenance) -> Unit,
     onAddMaintClick: () -> Unit,
-    onExportClick: () -> Unit
+    onExportClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -5271,7 +5398,7 @@ fun UserManagementScreen(
     users: List<com.example.data.model.User>,
     onSaveUser: (com.example.data.model.User) -> Unit,
     onDeleteUser: (com.example.data.model.User) -> Unit,
-    onExportAllLogs: () -> Unit
+    onExportAllLogs: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = context as? androidx.fragment.app.FragmentActivity
