@@ -384,8 +384,20 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         }
     }
 
-    fun saveCategory(category: com.example.data.model.Category, onComplete: () -> Unit) {
+    fun saveCategory(category: com.example.data.model.Category, oldName: String? = null, onComplete: () -> Unit) {
         viewModelScope.launch {
+            if (oldName != null && oldName != category.name) {
+                // Delete old category first
+                repository.deleteCategory(com.example.data.model.Category(name = oldName, guidelines = ""))
+                
+                // Update assets that had the old category
+                val assets = repository.allAssets.first()
+                assets.forEach { asset ->
+                    if (asset.type == oldName) {
+                        repository.updateAsset(asset.copy(type = category.name))
+                    }
+                }
+            }
             repository.insertCategory(category)
             onComplete()
         }
@@ -394,6 +406,13 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
     fun deleteCategory(category: com.example.data.model.Category, onComplete: () -> Unit) {
         viewModelScope.launch {
             repository.deleteCategory(category)
+            // Update assets with the deleted category to "Lainnya"
+            val assets = repository.allAssets.first()
+            assets.forEach { asset ->
+                if (asset.type == category.name) {
+                    repository.updateAsset(asset.copy(type = "Lainnya"))
+                }
+            }
             onComplete()
         }
     }

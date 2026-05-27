@@ -640,6 +640,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                             )
                                         }
                                         SubScreen.AddAsset -> {
+                                            val categoryListState = viewModel.allCategories.collectAsStateWithLifecycle(emptyList())
+                                            val categoriesNames = categoryListState.value.map { it.name }
                                             AddAssetForm(
                                                 onSave = { asset ->
                                                     viewModel.saveAsset(asset) {
@@ -655,7 +657,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 },
                                                 assetList = assets,
                                                 onOpenScanner = { callback -> showingBarcodeScanner = callback },
-                                                initialInventoryNumber = prefilledInventoryForAddAsset
+                                                initialInventoryNumber = prefilledInventoryForAddAsset,
+                                                 categories = categoriesNames
                                             )
                                         }
                                         else -> {}
@@ -1801,21 +1804,24 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
 }
 
 // Dialog to input new Asset
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddAssetForm(
     onSave: (Asset) -> Unit,
     onCancel: () -> Unit,
     assetList: List<Asset>,
     onOpenScanner: (((String) -> Unit)) -> Unit,
-    initialInventoryNumber: String? = null
+    initialInventoryNumber: String? = null,
+    categories: List<String> = emptyList()
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
+    val displayCategories = if (categories.isNotEmpty()) categories else listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
+
     var invNum by remember { mutableStateOf(initialInventoryNumber ?: "") }
     var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("Laptop") }
+    var type by remember { mutableStateOf(displayCategories.firstOrNull() ?: "Laptop") }
     var location by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var acquisitionDateLong by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -1824,43 +1830,76 @@ fun AddAssetForm(
     val context = LocalContext.current
     val simpleDateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
-    val categories = listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
     var categoryExpanded by remember { mutableStateOf(false) }
 
-    Column(
+    fun formatThousandSeparator(input: String): String {
+        val clean = input.filter { it.isDigit() }
+        if (clean.isEmpty()) return ""
+        val reversed = clean.reversed()
+        val builder = StringBuilder()
+        for (i in reversed.indices) {
+            if (i > 0 && i % 3 == 0) {
+                builder.append('.')
+            }
+            builder.append(reversed[i])
+        }
+        return builder.reverse().toString()
+    }
+
+    fun capitalizeFirstLetter(input: String): String {
+        if (input.isEmpty()) return ""
+        return input[0].uppercaseChar().toString() + input.substring(1)
+    }
+
+    val themeBgColor = MaterialTheme.colorScheme.background
+
+    val buttonsBottomOffset = if (WindowInsets.isImeVisible) {
+        16.dp
+    } else {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
             .testTag("add_asset_form")
     ) {
-        Text(
-            "Pendaftaran Aset Inventaris Baru",
-            fontWeight = FontWeight.ExtraBold,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            "Masukkan data detail perangkat keras yang dikelola oleh tim IT support.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 20.dp)
-        )
-
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top = 24.dp,
+                bottom = buttonsBottomOffset + 70.dp,
+                start = 16.dp,
+                end = 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
+                Text(
+                    "Pendaftaran Aset Inventaris Baru",
+                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "Masukkan data detail perangkat keras yang dikelola oleh tim IT support.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+
+            item {
                 OutlinedTextField(
                     value = invNum,
-                    onValueChange = { invNum = it.trim().uppercase(Locale.getDefault()) },
+                    onValueChange = { invNum = capitalizeFirstLetter(it.trim().uppercase(Locale.getDefault())) },
                     label = { Text("Nomor Inventaris Aset") },
                     placeholder = { Text("Contoh: INV-LP-025") },
                     trailingIcon = {
                         IconButton(
                             onClick = {
                                 onOpenScanner { code ->
-                                    invNum = code.trim().uppercase(Locale.getDefault())
+                                    invNum = capitalizeFirstLetter(code.trim().uppercase(Locale.getDefault()))
                                 }
                             },
                             modifier = Modifier.testTag("btn_inv_number_scan")
@@ -1873,6 +1912,12 @@ fun AddAssetForm(
                         }
                     },
                     singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("tf_inv_number"),
@@ -1891,10 +1936,16 @@ fun AddAssetForm(
             item {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = { name = capitalizeFirstLetter(it) },
                     label = { Text("Nama Perangkat") },
                     placeholder = { Text("Contoh: iMac Pro Retina 2024") },
                     singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("tf_asset_name")
@@ -1913,7 +1964,12 @@ fun AddAssetForm(
                         readOnly = true,
                         label = { Text("Kategori Perangkat") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                        ),
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth()
@@ -1923,7 +1979,7 @@ fun AddAssetForm(
                         expanded = categoryExpanded,
                         onDismissRequest = { categoryExpanded = false }
                     ) {
-                        categories.forEach { selectionOption ->
+                        displayCategories.forEach { selectionOption ->
                             DropdownMenuItem(
                                 text = { Text(selectionOption) },
                                 onClick = {
@@ -1939,10 +1995,16 @@ fun AddAssetForm(
             item {
                 OutlinedTextField(
                     value = location,
-                    onValueChange = { location = it },
+                    onValueChange = { location = capitalizeFirstLetter(it) },
                     label = { Text("Lokasi Perangkat") },
                     placeholder = { Text("Contoh: Ruang Meeting Lt. 2") },
                     singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("tf_asset_location")
@@ -1988,12 +2050,13 @@ fun AddAssetForm(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         },
+                        shape = RoundedCornerShape(16.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("tf_asset_acquisition_date"),
                         colors = OutlinedTextFieldDefaults.colors(
                             disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                             disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             disabledLeadingIconColor = MaterialTheme.colorScheme.primary
                         )
@@ -2005,14 +2068,19 @@ fun AddAssetForm(
                 OutlinedTextField(
                     value = purchasePriceInput,
                     onValueChange = { input ->
-                        if (input.all { it.isDigit() }) {
-                            purchasePriceInput = input
-                        }
+                        val clean = input.filter { it.isDigit() }
+                        purchasePriceInput = formatThousandSeparator(clean)
                     },
                     label = { Text("Harga Beli (Rp) - Opsional") },
-                    placeholder = { Text("Contoh: 12500000") },
+                    placeholder = { Text("Contoh: 1.250.000") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("tf_asset_purchase_price")
@@ -2022,10 +2090,16 @@ fun AddAssetForm(
             item {
                 OutlinedTextField(
                     value = description,
-                    onValueChange = { description = it },
+                    onValueChange = { description = capitalizeFirstLetter(it) },
                     label = { Text("Spesifikasi & Keterangan Tambahan") },
                     placeholder = { Text("Prosesor, RAM, Penyimpanan, dll...") },
                     maxLines = 4,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(110.dp)
@@ -2034,11 +2108,51 @@ fun AddAssetForm(
             }
         }
 
-        Row(
+        // Top Gradient (same as Dashboard)
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .height(40.dp)
+                .align(Alignment.TopCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            themeBgColor,
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // Bottom Gradient Overlay (same as Dashboard)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(130.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            themeBgColor.copy(alpha = 0.15f),
+                            themeBgColor.copy(alpha = 0.50f),
+                            themeBgColor.copy(alpha = 0.85f),
+                            themeBgColor.copy(alpha = 0.95f),
+                            themeBgColor
+                        )
+                    )
+                )
+        )
+
+        // Floating Row of cancel and save buttons following the keyboard
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = buttonsBottomOffset)
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedButton(
                 onClick = {
@@ -2047,6 +2161,11 @@ fun AddAssetForm(
                     onCancel()
                 },
                 shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                elevation = null,
                 modifier = Modifier
                     .weight(1f)
                     .height(50.dp)
@@ -2062,7 +2181,8 @@ fun AddAssetForm(
                 onClick = {
                     keyboardController?.hide()
                     focusManager.clearFocus(force = true)
-                    val priceDouble = purchasePriceInput.toDoubleOrNull()
+                    val priceClean = purchasePriceInput.replace(".", "")
+                    val priceDouble = priceClean.toDoubleOrNull()
                     onSave(Asset(
                         inventoryNumber = invNum,
                         name = name,
@@ -2077,6 +2197,7 @@ fun AddAssetForm(
                 },
                 shape = RoundedCornerShape(12.dp),
                 enabled = isValid,
+                elevation = null,
                 modifier = Modifier
                     .weight(1f)
                     .height(50.dp)
