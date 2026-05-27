@@ -40,7 +40,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -53,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -390,6 +395,35 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var userMenuExpanded by remember { mutableStateOf(false) }
     var hamburgerMenuExpanded by remember { mutableStateOf(false) }
 
+    var mainScreenHeightPx by remember { mutableStateOf(0f) }
+    var rootTopYPx by remember { mutableStateOf(0f) }
+    var searchBarTopYPx by remember { mutableStateOf(0f) }
+    var searchBarHeightPx by remember { mutableStateOf(0f) }
+
+    val imeBottomPaddingForSearch = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val isDashboardKeyboardOpen = imeBottomPaddingForSearch > 0.dp
+    val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
+        imeBottomPaddingForSearch + 16.dp
+    } else {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+    }
+
+    val localDensity = LocalDensity.current
+    val computedSearchBarTopDp by remember(mainScreenHeightPx, rootTopYPx, searchBarTopYPx, searchBarBottomOffset) {
+        derivedStateOf {
+            if (mainScreenHeightPx > 0f && searchBarTopYPx > 0f) {
+                val measuredHeight = mainScreenHeightPx - (searchBarTopYPx - rootTopYPx)
+                if (measuredHeight > 0f) {
+                    with(localDensity) { measuredHeight.toDp() }
+                } else {
+                    searchBarBottomOffset + 56.dp
+                }
+            } else {
+                searchBarBottomOffset + 56.dp
+            }
+        }
+    }
+
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -616,7 +650,24 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
             },
             gesturesEnabled = false
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { coordinates ->
+                        if (coordinates.isAttached) {
+                            val newHeight = coordinates.size.height.toFloat()
+                            val newTopY = coordinates.positionInWindow().y
+                            val heightDiff = mainScreenHeightPx - newHeight
+                            if ((if (heightDiff < 0) -heightDiff else heightDiff) > 1f) {
+                                mainScreenHeightPx = newHeight
+                            }
+                            val topYDiff = rootTopYPx - newTopY
+                            if ((if (topYDiff < 0) -topYDiff else topYDiff) > 1f) {
+                                rootTopYPx = newTopY
+                            }
+                        }
+                    }
+            ) {
                 Scaffold(
                     modifier = modifier.testTag("main_screen_scaffold"),
                     contentWindowInsets = WindowInsets(0.dp)
@@ -636,7 +687,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 repairs = repairs,
                                                 isFirebaseEnabled = viewModel.isFirebaseEnabled,
                                                 onAssetClick = { asset -> showingAssetDetail = asset },
-                                                searchQuery = searchQuery
+                                                searchQuery = searchQuery,
+                                                searchBarTopDp = computedSearchBarTopDp
                                             )
                                         }
                                         SubScreen.AddAsset -> {
@@ -776,14 +828,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 }
 
                 // --- 1.5 Custom Gradient Overlays ---
-                val imeBottomPaddingForSearch = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-                val isDashboardKeyboardOpen = imeBottomPaddingForSearch > 0.dp
-                val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
-                    imeBottomPaddingForSearch + 16.dp
-                } else {
-                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
-                }
-
                 if (currentSubScreen == SubScreen.List) {
                     val themeBgColor = MaterialTheme.colorScheme.background
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -810,11 +854,11 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ONLY on Dashboard
                     if (currentTab == AppTab.Dashboard) {
                         val bottomAnchor = if (isDashboardKeyboardOpen) imeBottomPaddingForSearch else 0.dp
-                        val bottomGradientHeight = searchBarBottomOffset - bottomAnchor + 56.dp
+                        val computedGradientHeight = maxOf(0.dp, computedSearchBarTopDp - bottomAnchor)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(bottomGradientHeight)
+                                .height(computedGradientHeight)
                                 .align(Alignment.BottomCenter)
                                 .padding(bottom = bottomAnchor)
                                 .background(
@@ -914,6 +958,20 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
+                            .onGloballyPositioned { coords ->
+                                if (coords.isAttached) {
+                                    val newTopY = coords.positionInWindow().y
+                                    val newHeight = coords.size.height.toFloat()
+                                    val topYDiff = searchBarTopYPx - newTopY
+                                    if ((if (topYDiff < 0) -topYDiff else topYDiff) > 1f) {
+                                        searchBarTopYPx = newTopY
+                                    }
+                                    val heightDiff = searchBarHeightPx - newHeight
+                                    if ((if (heightDiff < 0) -heightDiff else heightDiff) > 1f) {
+                                        searchBarHeightPx = newHeight
+                                    }
+                                }
+                            }
                     ) {
                         Row(
                             modifier = Modifier
@@ -1383,7 +1441,8 @@ fun DashboardScreen(
     repairs: List<Repair>,
     isFirebaseEnabled: Boolean,
     onAssetClick: (Asset) -> Unit,
-    searchQuery: String
+    searchQuery: String,
+    searchBarTopDp: Dp
 ) {
     var showFilterDialog by remember { mutableStateOf(false) }
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
@@ -1405,14 +1464,7 @@ fun DashboardScreen(
     val brokenAssets = remember(assets) { assets.count { it.status == "Rusak Permanen" } }
     val holdAssets = remember(assets) { assets.count { it.status == "Hold" || it.status == "Dalam Pengerjaan" } }
 
-    val imeBottomPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-    val isKeyboardOpen = imeBottomPadding > 0.dp
-    val searchBarBottomOffset = if (isKeyboardOpen) {
-        imeBottomPadding + 16.dp
-    } else {
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
-    }
-    val dashboardBottomPadding = searchBarBottomOffset + 72.dp
+    val dashboardBottomPadding = searchBarTopDp + 16.dp
 
     LazyColumn(
         modifier = Modifier
@@ -1868,16 +1920,51 @@ fun AddAssetForm(
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
+    var formContainerHeightPx by remember { mutableStateOf(0f) }
+    var formContainerTopYPx by remember { mutableStateOf(0f) }
+    var buttonsTopYPx by remember { mutableStateOf(0f) }
+
+    val localDensity = LocalDensity.current
+    val computedButtonsTopDp by remember(formContainerHeightPx, formContainerTopYPx, buttonsTopYPx, buttonsBottomOffset) {
+        derivedStateOf {
+            if (formContainerHeightPx > 0f && buttonsTopYPx > 0f) {
+                val measuredHeight = formContainerHeightPx - (buttonsTopYPx - formContainerTopYPx)
+                if (measuredHeight > 0f) {
+                    with(localDensity) { measuredHeight.toDp() }
+                } else {
+                    buttonsBottomOffset + 50.dp
+                }
+            } else {
+                // Perfect mathematical initial fallback
+                buttonsBottomOffset + 50.dp
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .testTag("add_asset_form")
+            .onGloballyPositioned { coords ->
+                if (coords.isAttached) {
+                    val newHeight = coords.size.height.toFloat()
+                    val newTopY = coords.positionInWindow().y
+                    val heightDiff = formContainerHeightPx - newHeight
+                    if ((if (heightDiff < 0) -heightDiff else heightDiff) > 1f) {
+                        formContainerHeightPx = newHeight
+                    }
+                    val topYDiff = formContainerTopYPx - newTopY
+                    if ((if (topYDiff < 0) -topYDiff else topYDiff) > 1f) {
+                        formContainerTopYPx = newTopY
+                    }
+                }
+            }
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = statusBarHeight + 84.dp,
-                bottom = buttonsBottomOffset + 66.dp,
+                bottom = computedButtonsTopDp + 16.dp,
                 start = 16.dp,
                 end = 16.dp
             ),
@@ -2138,11 +2225,11 @@ fun AddAssetForm(
 
         // Bottom Gradient Overlay (anchored directly to the top edge of the action buttons)
         val bottomAnchor = if (isKeyboardOpen) imeBottomPaddingForButtons else 0.dp
-        val bottomGradientHeight = buttonsBottomOffset - bottomAnchor + 50.dp
+        val computedGradientHeight = maxOf(0.dp, computedButtonsTopDp - bottomAnchor)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(bottomGradientHeight)
+                .height(computedGradientHeight)
                 .align(Alignment.BottomCenter)
                 .padding(bottom = bottomAnchor)
                 .background(
@@ -2165,7 +2252,16 @@ fun AddAssetForm(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = buttonsBottomOffset)
                 .padding(horizontal = 16.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .onGloballyPositioned { coords ->
+                    if (coords.isAttached) {
+                        val newTopY = coords.positionInWindow().y
+                        val topYDiff = buttonsTopYPx - newTopY
+                        if ((if (topYDiff < 0) -topYDiff else topYDiff) > 1f) {
+                            buttonsTopYPx = newTopY
+                        }
+                    }
+                },
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
