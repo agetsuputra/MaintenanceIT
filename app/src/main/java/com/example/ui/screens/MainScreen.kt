@@ -847,7 +847,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 // 3. Floating Bottom Search Bar
                 val keyboardController = LocalSoftwareKeyboardController.current
                 val searchBarBottomOffset = if (WindowInsets.isImeVisible) {
-                    16.dp
+                    8.dp
                 } else {
                     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
                 }
@@ -858,7 +858,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     exit = fadeOut(),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .windowInsetsPadding(WindowInsets.ime)
+                        .imePadding()
                         .padding(bottom = searchBarBottomOffset)
                         .padding(horizontal = 16.dp)
                 ) {
@@ -1015,6 +1015,26 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     },
                                     testTag = "menu_user_management"
                                 )
+
+                                PopupMenuItem(
+                                    text = "Manajemen Kategori",
+                                    icon = Icons.Default.Category,
+                                    onClick = {
+                                        userMenuExpanded = false
+                                        Toast.makeText(context, "Fitur Manajemen Kategori akan segera hadir", Toast.LENGTH_SHORT).show()
+                                    },
+                                    testTag = "menu_kategori"
+                                )
+
+                                PopupMenuItem(
+                                    text = "Pengaturan",
+                                    icon = Icons.Default.Tune,
+                                    onClick = {
+                                        userMenuExpanded = false
+                                        Toast.makeText(context, "Fitur Pengaturan akan segera hadir", Toast.LENGTH_SHORT).show()
+                                    },
+                                    testTag = "menu_pengaturan"
+                                )
                                 
                                 PopupMenuItem(
                                     text = "Log Out",
@@ -1138,16 +1158,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                 )
 
-                                PopupMenuItem(
-                                    text = "Manajemen Kategori",
-                                    icon = Icons.Default.Category,
-                                    onClick = {
-                                        hamburgerMenuExpanded = false
-                                        Toast.makeText(context, "Fitur Manajemen Kategori akan segera hadir", Toast.LENGTH_SHORT).show()
-                                    },
-                                    testTag = "menu_kategori",
-                                    isSelected = false
-                                )
+
 
                                 PopupMenuItem(
                                     text = "Export PDF Inventaris",
@@ -1213,16 +1224,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     isSelected = false
                                 )
 
-                                PopupMenuItem(
-                                    text = "Pengaturan",
-                                    icon = Icons.Default.Tune,
-                                    onClick = {
-                                        hamburgerMenuExpanded = false
-                                        Toast.makeText(context, "Fitur Pengaturan akan segera hadir", Toast.LENGTH_SHORT).show()
-                                    },
-                                    testTag = "menu_pengaturan",
-                                    isSelected = false
-                                )
+
                             }
                         }
                     }
@@ -2556,34 +2558,161 @@ fun RepairsScreen(
         Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
     )
 
-    Column(
+    // Category filter state for repairs list (matching dashboard filter)
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var selectedCategories by remember { mutableStateOf(setOf<String>()) }
+    var filterAllSelected by remember { mutableStateOf(true) }
+
+    val filteredRepairs = remember(repairs, assets, selectedCategories, filterAllSelected) {
+        repairs.filter { repair ->
+            val matchedAsset = assets.find { it.inventoryNumber == repair.inventoryNumber }
+            val assetType = matchedAsset?.type ?: "Lainnya"
+            filterAllSelected || selectedCategories.contains(assetType)
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
             .testTag("repairs_screen")
     ) {
-        Text(
-            "Laporan Perbaikan Kerusakan",
-            fontWeight = FontWeight.ExtraBold,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
+        // Scrollable content
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 210.dp // High padding to scroll past the floating bottom Card
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Title (scrollable)
+            item {
+                Text(
+                    "Laporan Perbaikan Kerusakan",
+                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
-        // Date Picker Range Row
-        Card(
+            // Header with Filter button (scrollable)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Daftar Perbaikan (${filteredRepairs.size})",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showFilterDialog = true }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = "Filter Kategori",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Filter",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            // Repair list logic
+            if (filteredRepairs.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Build,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(54.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Tidak ada perbaikan pada rentang ini",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(filteredRepairs, key = { it.id }) { repair ->
+                    RepairItemCard(
+                        repair = repair,
+                        assets = assets,
+                        onClick = { onRepairClick(repair) }
+                    )
+                }
+            }
+        }
+
+        // Floating Gradient Overlay for bottom floating Card
+        val themeBgColor = MaterialTheme.colorScheme.background
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-            shape = RoundedCornerShape(14.dp)
+                .height(220.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            themeBgColor.copy(alpha = 0.15f),
+                            themeBgColor.copy(alpha = 0.50f),
+                            themeBgColor.copy(alpha = 0.85f),
+                            themeBgColor.copy(alpha = 0.95f),
+                            themeBgColor
+                        )
+                    )
+                )
+        )
+
+        // Date Picker Range Row inside Floating Sticky Card at the bottom
+        Card(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp)
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    "Rentang Waktu Laporan:",
-                    fontWeight = FontWeight.Medium,
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(bottom = 6.dp)
+                    text = "Rentang Waktu Perbaikan:",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
 
                 Row(
@@ -2595,7 +2724,7 @@ fun RepairsScreen(
                         modifier = Modifier
                             .weight(1f)
                             .background(
-                                MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp)
                             )
                             .clickable { startPicker.show() }
@@ -2604,19 +2733,35 @@ fun RepairsScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                             Spacer(Modifier.width(4.dp))
-                            Text(format.format(Date(startDate)), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = format.format(Date(startDate)),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
 
-                    Text(" s.d ", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
+                    Text(
+                        text = " s.d ",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
 
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .background(
-                                MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp)
                             )
                             .clickable { endPicker.show() }
@@ -2625,172 +2770,254 @@ fun RepairsScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                             Spacer(Modifier.width(4.dp))
-                            Text(format.format(Date(endDate)), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = format.format(Date(endDate)),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onAddRepairClick,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_add_repair"),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Tambah Perbaikan", fontSize = 12.sp)
+                    }
+
+                    OutlinedButton(
+                        onClick = onExportClick,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_export_repairs")
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Export PDF", fontSize = 12.sp)
                     }
                 }
             }
         }
+    }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onAddRepairClick,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("btn_add_repair"),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Daftar Perbaikan", fontSize = 12.sp)
+    if (showFilterDialog) {
+        val availableCategories = listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
+        AlertDialog(
+            onDismissRequest = { showFilterDialog = false },
+            title = { Text("Filter Kategori Perangkat", fontWeight = FontWeight.Bold) },
+            text = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    filterAllSelected = !filterAllSelected
+                                    if (filterAllSelected) {
+                                        selectedCategories = emptySet()
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = filterAllSelected,
+                                onCheckedChange = { checked ->
+                                    filterAllSelected = checked
+                                    if (checked) {
+                                        selectedCategories = emptySet()
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Semua Kategori (All)")
+                        }
+                    }
+                    items(availableCategories) { cat ->
+                        val isChecked = !filterAllSelected && selectedCategories.contains(cat)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val current = selectedCategories.toMutableSet()
+                                    if (current.contains(cat)) {
+                                        current.remove(cat)
+                                    } else {
+                                        current.add(cat)
+                                    }
+                                    selectedCategories = current
+                                    filterAllSelected = current.isEmpty()
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = { checked ->
+                                    val current = selectedCategories.toMutableSet()
+                                    if (checked) {
+                                        current.add(cat)
+                                    } else {
+                                        current.remove(cat)
+                                    }
+                                    selectedCategories = current
+                                    filterAllSelected = current.isEmpty()
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(cat)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFilterDialog = false }) {
+                    Text("Terapkan", fontWeight = FontWeight.Bold)
+                }
             }
-
-            OutlinedButton(
-                onClick = onExportClick,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("btn_export_repairs")
-            ) {
-                Icon(Icons.Default.Share, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Export PDF", fontSize = 12.sp)
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            text = "Daftar Perbaikan (${repairs.size})",
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
         )
-
-        // Repair list logic
-        if (repairs.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(54.dp))
-                    Text("Tidak ada perbaikan pada rentang ini", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(repairs, key = { it.id }) { repair ->
-                    RepairItemCard(repair = repair, assets = assets, onClick = { onRepairClick(repair) })
-                }
-                item {
-                    Spacer(modifier = Modifier.height(100.dp))
-                }
-            }
-        }
     }
 }
 
 @Composable
 fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
-    val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(repair.startTime))
-    val isHold = repair.status == "Hold"
     val matchedAsset = assets.find { it.inventoryNumber == repair.inventoryNumber }
+    val assetName = matchedAsset?.name ?: "Perangkat Tidak Dikenal"
+    val assetType = matchedAsset?.type ?: "Lainnya"
+    val isHold = repair.status == "Hold"
+    
+    val statusColor = when (repair.status) {
+        "Hold" -> Color(0xFFEF6C00) // Orange
+        "Dalam Pengerjaan" -> Color(0xFF1976D2) // Blue
+        else -> Color(0xFF2E7D32) // Green
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .testTag("repair_card_${repair.id}"),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = matchedAsset?.name ?: "Perangkat Tidak Dikenal",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(2.dp))
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            // First Row: Asset Name and Status badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = "ID: ${repair.inventoryNumber}",
-                    fontWeight = FontWeight.Medium,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                // Status Badge
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = assetName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Inventaris: ${repair.inventoryNumber}",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "Kategori: $assetType",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    )
+                }
+
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = (if (isHold) Color(0xFFE65100) else Color(0xFF2E7D32)).copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, if (isHold) Color(0xFFE65100).copy(alpha = 0.4f) else Color(0xFF2E7D32).copy(alpha = 0.4f))
+                    color = statusColor.copy(alpha = 0.12f),
                 ) {
                     Text(
                         text = repair.status,
-                        color = if (isHold) Color(0xFFE65100) else Color(0xFF2E7D32),
+                        color = statusColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Kendala: ${repair.problem}",
-                fontWeight = FontWeight.Medium,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(Modifier.height(4.dp))
-            if (isHold && !repair.holdReason.isNullOrBlank()) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        "Alasan Hold: ${repair.holdReason}",
-                        color = MaterialTheme.colorScheme.error,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(6.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
-                Spacer(Modifier.height(4.dp))
             }
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Second Row: Kendala (on the bottom left) and Teknisi (on the bottom right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(2.dp))
-                    Text(repair.technician, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Kendala
+                Column(modifier = Modifier.weight(1.2f)) {
+                    Text(
+                        text = "Kendala",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = repair.problem,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-                Text(dateStr, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                // Teknisi Penanggung Jawab
+                Column(
+                    modifier = Modifier.weight(0.8f),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "Teknisi",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = repair.technician,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
