@@ -869,9 +869,10 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
                 // 3. Floating Bottom Search Bar
                 val keyboardController = LocalSoftwareKeyboardController.current
-                val isDashboardKeyboardOpen = WindowInsets.isImeVisible
+                val imeBottomPaddingForSearch = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+                val isDashboardKeyboardOpen = imeBottomPaddingForSearch > 0.dp
                 val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
-                    24.dp
+                    imeBottomPaddingForSearch + 24.dp
                 } else {
                     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
                 }
@@ -1399,6 +1400,14 @@ fun DashboardScreen(
     val brokenAssets = remember(assets) { assets.count { it.status == "Rusak Permanen" } }
     val holdAssets = remember(assets) { assets.count { it.status == "Hold" || it.status == "Dalam Pengerjaan" } }
 
+    val imeBottomPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val isKeyboardOpen = imeBottomPadding > 0.dp
+    val dashboardBottomPadding = if (isKeyboardOpen) {
+        imeBottomPadding + 96.dp
+    } else {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -1407,7 +1416,7 @@ fun DashboardScreen(
             start = 16.dp,
             end = 16.dp,
             top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
-            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 76.dp
+            bottom = dashboardBottomPadding
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -1842,9 +1851,10 @@ fun AddAssetForm(
 
     val themeBgColor = MaterialTheme.colorScheme.background
 
-    val isKeyboardOpen = WindowInsets.isImeVisible
+    val imeBottomPaddingForButtons = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val isKeyboardOpen = imeBottomPaddingForButtons > 0.dp
     val buttonsBottomOffset = if (isKeyboardOpen) {
-        24.dp
+        imeBottomPaddingForButtons + 24.dp
     } else {
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
     }
