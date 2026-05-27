@@ -1,5 +1,14 @@
 package com.example.ui.components
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -16,16 +25,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import com.example.data.model.Asset
-import kotlinx.coroutines.delay
-import kotlin.random.Random
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
+import java.util.concurrent.Executors
 
 @Composable
 fun BarcodeScannerDialog(
@@ -33,8 +49,31 @@ fun BarcodeScannerDialog(
     onAssetSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var scanStatus by remember { mutableStateOf("Membuka Kamera...") }
-    var scaleFraction by remember { mutableStateOf(0.9f) }
+    val context = LocalContext.current
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            hasCameraPermission = isGranted
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    // Guard to ensure we only return code once
+    var hasScanned by remember { mutableStateOf(false) }
 
     // Pulse animation for the viewfinder corners
     val infiniteTransition = rememberInfiniteTransition(label = "viewfinder_pulse")
@@ -47,31 +86,6 @@ fun BarcodeScannerDialog(
         ),
         label = "pulse_alpha"
     )
-
-    // Run the high-fidelity Google Play Services auto-scan simulation sequence
-    LaunchedEffect(Unit) {
-        scaleFraction = 1.0f
-        delay(400)
-        scanStatus = "Mencari Kode QR / Barcode..."
-        delay(1000)
-        scanStatus = "Mendeteksi..."
-        
-        // Determine the simulated barcode value
-        val scannedCode = if (assetList.isNotEmpty()) {
-            // Pick a random existing asset ID to seamlessly simulate matching an asset for Repair/Maintenance
-            assetList.random().inventoryNumber
-        } else {
-            // Generate a fresh clean ID if registering a new asset
-            val prefix = listOf("AST-HW", "AST-NW", "AST-SW", "AST-IT").random()
-            val randomNumber = Random.nextInt(10000, 99999)
-            "$prefix-$randomNumber"
-        }
-        
-        delay(400)
-        scanStatus = "Kode berhasil dipindai!"
-        delay(300)
-        onAssetSelected(scannedCode)
-    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -91,7 +105,7 @@ fun BarcodeScannerDialog(
                     .systemBarsPadding(),
                 contentAlignment = Alignment.Center
             ) {
-                // Main Google Play Services style Column
+                // Main Play Services style Column
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
@@ -99,7 +113,7 @@ fun BarcodeScannerDialog(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                 ) {
-                    // Google Play Services logo and brand indicator at the top
+                    // Title replacement as requested: "Arahkan ke QR Code"
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
@@ -109,27 +123,58 @@ fun BarcodeScannerDialog(
                             imageVector = Icons.Default.QrCode,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = 0.85f),
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "Google Play Services",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(alpha = 0.7f),
-                            letterSpacing = 1.sp,
+                            text = "Arahkan ke QR Code",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            letterSpacing = 0.5.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
-                    // Authentic Play Services Viewfinder Window
+                    // Authentic Play Services Viewfinder Window with real camera preview!
                     Box(
                         modifier = Modifier
                             .size(240.dp)
                             .clip(RoundedCornerShape(24.dp))
-                            .background(Color.White.copy(alpha = 0.04f))
-                            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24.dp)),
+                            .background(Color.Black)
+                            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(24.dp)),
                         contentAlignment = Alignment.Center
                     ) {
+                        if (hasCameraPermission) {
+                            CameraPreview(
+                                onBarcodeDetected = { scannedCode ->
+                                    if (!hasScanned) {
+                                        hasScanned = true
+                                        onAssetSelected(scannedCode)
+                                    }
+                                }
+                            )
+                        } else {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCode,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = Color.White.copy(alpha = 0.4f)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Izin Kamera Dibutuhkan",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
                         // Play Services style Corner Guides (Clean, professional white borders)
                         Box(
                             modifier = Modifier
@@ -224,26 +269,18 @@ fun BarcodeScannerDialog(
                                 )
                             }
                         }
-
-                        // Central Indicator Icon
-                        Icon(
-                            imageVector = Icons.Default.QrCode,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.White.copy(alpha = 0.15f)
-                        )
                     }
 
                     Spacer(modifier = Modifier.height(28.dp))
 
-                    // Simulated Scanning State Status Title
+                    // QR scanning guidance description
                     Text(
-                        text = scanStatus,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
+                        text = "Tempatkan kode QR dalam bingkai untuk memindai secara otomatis",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.LightGray.copy(alpha = 0.8f),
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 24.dp)
                     )
 
                     Spacer(modifier = Modifier.height(60.dp))
@@ -252,19 +289,106 @@ fun BarcodeScannerDialog(
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
-                            .size(54.dp)
-                            .background(Color.White.copy(alpha = 0.12f), CircleShape)
+                            .size(56.dp)
+                            .background(Color.White.copy(alpha = 0.15f), CircleShape)
                             .testTag("btn_close_scanner_sim"),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Tutup Pemindai",
                             tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun CameraPreview(
+    onBarcodeDetected: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            cameraExecutor.shutdown()
+        }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            val previewView = PreviewView(ctx).apply {
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+            }
+
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+
+                // Preview
+                val preview = Preview.Builder().build().also {
+                    it.surfaceProvider = previewView.surfaceProvider
+                }
+
+                // ImageAnalysis with ML Kit Barcode detecting
+                val options = BarcodeScannerOptions.Builder()
+                    .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+                    .build()
+                val barcodeScanner = BarcodeScanning.getClient(options)
+
+                val imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                    .also { analysis ->
+                        analysis.setAnalyzer(cameraExecutor) { imageProxy ->
+                            @OptIn(androidx.camera.core.ExperimentalGetImage::class)
+                            val mediaImage = imageProxy.image
+                            if (mediaImage != null) {
+                                val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                                barcodeScanner.process(image)
+                                    .addOnSuccessListener { barcodes ->
+                                        for (barcode in barcodes) {
+                                            val rawValue = barcode.rawValue
+                                            if (!rawValue.isNullOrBlank()) {
+                                                onBarcodeDetected(rawValue)
+                                                break
+                                            }
+                                        }
+                                    }
+                                    .addOnFailureListener {
+                                        // Failures can occur during transition or dark frames, ignore
+                                    }
+                                    .addOnCompleteListener {
+                                        imageProxy.close()
+                                    }
+                            } else {
+                                imageProxy.close()
+                            }
+                        }
+                    }
+
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                try {
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageAnalysis
+                    )
+                } catch (exc: Exception) {
+                    exc.printStackTrace()
+                }
+            }, ContextCompat.getMainExecutor(ctx))
+
+            previewView
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 }
