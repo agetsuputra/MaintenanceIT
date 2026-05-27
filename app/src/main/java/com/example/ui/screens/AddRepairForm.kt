@@ -87,16 +87,10 @@ fun AddRepairForm(
         ) {
             item {
                 Text(
-                    "Registrasi Perbaikan Kerusakan",
+                    "Perbaikan Kerusakan",
                     fontWeight = FontWeight.ExtraBold,
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.error
-                )
-                Text(
-                    "Segera catat kerusakan laptop, computer, printer, atau jaringan yang ditangani.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
 
@@ -115,12 +109,14 @@ fun AddRepairForm(
                                     invNum = code.trim().uppercase()
                                 }
                             },
-                            modifier = Modifier.testTag("repair_btn_inv_scan")
+                            modifier = Modifier
+                                .testTag("repair_btn_inv_scan")
+                                .offset(x = 4.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.QrCodeScanner,
                                 contentDescription = "Scan QR/Barcode",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     },

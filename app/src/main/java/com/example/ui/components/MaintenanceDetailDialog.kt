@@ -46,7 +46,7 @@ fun MaintenanceDetailDialog(
     val focusManager = LocalFocusManager.current
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
-    val isUnfinished = maintenance.status == "Dalam Pengerjaan"
+    val isUnfinished = maintenance.status == "Dalam Pengerjaan" || maintenance.status == "Hold"
 
     // Edit states for concluding the maintenance activity
     var localActionTaken by remember { mutableStateOf(maintenance.actionTaken) }
@@ -137,7 +137,13 @@ fun MaintenanceDetailDialog(
 
                     item {
                         DetailSection("Status Perawatan", maintenance.status) {
-                            val color = if (isUnfinished) Color(0xFF0277BD) else Color(0xFF2E7D32)
+                            val color = if (maintenance.status == "Selesai" || maintenance.status == "Selesai & Terverifikasi") {
+                                Color(0xFF2E7D32)
+                            } else if (maintenance.status == "Hold") {
+                                Color(0xFFF57C00)
+                            } else {
+                                Color(0xFF0277BD)
+                            }
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = color.copy(alpha = 0.15f)
@@ -150,6 +156,15 @@ fun MaintenanceDetailDialog(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                                 )
                             }
+                        }
+                    }
+
+                    if (maintenance.status == "Hold") {
+                        item {
+                            DetailTextSection("Alasan Pending / Hold", maintenance.holdReason ?: "-")
+                        }
+                        item {
+                            DetailTextSection("Estimasi Penyelesaian", maintenance.holdEstimate ?: "-")
                         }
                     }
 

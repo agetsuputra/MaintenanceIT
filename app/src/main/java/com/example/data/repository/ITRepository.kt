@@ -138,6 +138,8 @@ class ITRepository(private val dao: InventoryDao) {
                                     issuesFound = doc.getString("issuesFound") ?: "",
                                     result = doc.getString("result") ?: "",
                                     status = doc.getString("status") ?: "",
+                                    holdReason = doc.getString("holdReason"),
+                                    holdEstimate = doc.getString("holdEstimate"),
                                     photoBefore = doc.getString("photoBefore"),
                                     photoAfter = doc.getString("photoAfter"),
                                     photoUser = doc.getString("photoUser"),

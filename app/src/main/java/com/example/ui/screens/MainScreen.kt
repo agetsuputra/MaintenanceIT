@@ -428,8 +428,10 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                             )
                                         }
                                         SubScreen.AddMaintenance -> {
+                                            val categoryListState = viewModel.allCategories.collectAsStateWithLifecycle(emptyList())
                                             AddMaintenanceForm(
                                                 assetList = assets,
+                                                categoryList = categoryListState.value,
                                                 onSave = { maint ->
                                                     viewModel.saveMaintenance(maint) {
                                                         currentSubScreen = SubScreen.List

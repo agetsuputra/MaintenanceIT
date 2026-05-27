@@ -43,7 +43,9 @@ data class Maintenance(
     val actionTaken: String,
     val issuesFound: String,
     val result: String,
-    val status: String, // "Dalam Pengerjaan" or "Selesai"
+    val status: String, // "Dalam Pengerjaan" or "Selesai", now also "Hold"
+    val holdReason: String? = null,
+    val holdEstimate: String? = null,
     val photoBefore: String?, // Watermarked
     val photoAfter: String?,  // Watermarked
     val photoUser: String?,   // Watermarked handover

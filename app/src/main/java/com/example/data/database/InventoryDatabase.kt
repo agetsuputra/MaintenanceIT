@@ -11,7 +11,7 @@ import com.example.data.model.AssetUpdateLog
 import com.example.data.model.User
 import com.example.data.model.Category
 
-@Database(entities = [Asset::class, Repair::class, Maintenance::class, AssetUpdateLog::class, User::class, Category::class], version = 6, exportSchema = false)
+@Database(entities = [Asset::class, Repair::class, Maintenance::class, AssetUpdateLog::class, User::class, Category::class], version = 7, exportSchema = false)
 abstract class InventoryDatabase : RoomDatabase() {
     abstract fun inventoryDao(): InventoryDao
 
