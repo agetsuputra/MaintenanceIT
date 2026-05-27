@@ -809,12 +809,14 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
                     // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ONLY on Dashboard
                     if (currentTab == AppTab.Dashboard) {
-                        val bottomGradientHeight = searchBarBottomOffset + 56.dp
+                        val bottomAnchor = if (isDashboardKeyboardOpen) imeBottomPaddingForSearch else 0.dp
+                        val bottomGradientHeight = searchBarBottomOffset - bottomAnchor + 56.dp
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(bottomGradientHeight)
                                 .align(Alignment.BottomCenter)
+                                .padding(bottom = bottomAnchor)
                                 .background(
                                     Brush.verticalGradient(
                                         colors = listOf(
@@ -1405,11 +1407,12 @@ fun DashboardScreen(
 
     val imeBottomPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val isKeyboardOpen = imeBottomPadding > 0.dp
-    val dashboardBottomPadding = if (isKeyboardOpen) {
-        imeBottomPadding + 88.dp
+    val searchBarBottomOffset = if (isKeyboardOpen) {
+        imeBottomPadding + 16.dp
     } else {
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
     }
+    val dashboardBottomPadding = searchBarBottomOffset + 72.dp
 
     LazyColumn(
         modifier = Modifier
@@ -1874,7 +1877,7 @@ fun AddAssetForm(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = statusBarHeight + 84.dp,
-                bottom = buttonsBottomOffset + 64.dp,
+                bottom = buttonsBottomOffset + 66.dp,
                 start = 16.dp,
                 end = 16.dp
             ),
@@ -2134,12 +2137,14 @@ fun AddAssetForm(
         )
 
         // Bottom Gradient Overlay (anchored directly to the top edge of the action buttons)
-        val bottomGradientHeight = buttonsBottomOffset + 48.dp
+        val bottomAnchor = if (isKeyboardOpen) imeBottomPaddingForButtons else 0.dp
+        val bottomGradientHeight = buttonsBottomOffset - bottomAnchor + 50.dp
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(bottomGradientHeight)
                 .align(Alignment.BottomCenter)
+                .padding(bottom = bottomAnchor)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
