@@ -9,6 +9,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -36,6 +37,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RepairsScreen(
     repairs: List<Repair>,
@@ -55,6 +57,7 @@ fun RepairsScreen(
     var showFilterDialog by remember { mutableStateOf(false) }
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
     var filterAllSelected by remember { mutableStateOf(true) }
+    var showDateRangePicker by remember { mutableStateOf(false) }
 
     val filteredRepairs = remember(repairs, assets, selectedCategories, filterAllSelected) {
         repairs.filter { repair ->
@@ -77,7 +80,7 @@ fun RepairsScreen(
                 start = 16.dp,
                 end = 16.dp,
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
-                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 210.dp // High padding to scroll past the floating bottom Card
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 100.dp // Comfortable space to scroll past the bottom bar
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -165,179 +168,113 @@ fun RepairsScreen(
             }
         }
 
-        // Floating Gradient Overlay for bottom floating Card
+        // Floating Gradient Overlay for bottom floating buttons
         com.example.ui.components.BottomFadeOverlay(
-            height = 220.dp,
+            height = 120.dp,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
 
-        // Date Picker Range Row inside Floating Sticky Card at the bottom
         val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
         val cardBorderColor = com.example.ui.theme.AdaptiveColors.cardBorderColor(cardColor)
 
-        Card(
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
                 .padding(bottom = 16.dp)
                 .padding(horizontal = 16.dp)
                 .fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = cardColor),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, cardBorderColor)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    text = "Rentang Waktu Perbaikan:",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+            // Left Button: Circular Date Range Picker (like hamburger menu style)
+            IconButton(
+                onClick = { showDateRangePicker = true },
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(cardColor, CircleShape)
+                    .border(1.dp, cardBorderColor, CircleShape)
+                    .testTag("btn_filter_start_date")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Pilih Rentang Tanggal",
+                    tint = MaterialTheme.colorScheme.primary
                 )
+            }
 
+            // Center Button: Wide "Tambah Perbaikan" (Styled like Searchbar)
+            Card(
+                onClick = onAddRepairClick,
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                border = BorderStroke(1.dp, cardBorderColor),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
+                    .testTag("btn_add_repair")
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .clickable {
-                                val cal = Calendar.getInstance().apply { timeInMillis = startDate }
-                                DatePickerDialog(
-                                    context,
-                                    { _, y, m, d ->
-                                        val selectedCal = Calendar.getInstance()
-                                        selectedCal.set(y, m, d, 0, 0, 0)
-                                        onStartDateChange(selectedCal.timeInMillis)
-                                    },
-                                    cal.get(Calendar.YEAR),
-                                    cal.get(Calendar.MONTH),
-                                    cal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }
-                            .padding(10.dp)
-                            .testTag("btn_filter_start_date"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = format.format(Date(startDate)),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = " s.d ",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 4.dp)
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Icon Tambah",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .clickable {
-                                val cal = Calendar.getInstance().apply { timeInMillis = endDate }
-                                DatePickerDialog(
-                                    context,
-                                    { _, y, m, d ->
-                                        val selectedCal = Calendar.getInstance()
-                                        selectedCal.set(y, m, d, 23, 59, 59)
-                                        onEndDateChange(selectedCal.timeInMillis)
-                                    },
-                                    cal.get(Calendar.YEAR),
-                                    cal.get(Calendar.MONTH),
-                                    cal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }
-                            .padding(10.dp)
-                            .testTag("btn_filter_end_date"),
-                        contentAlignment = Alignment.Center
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = format.format(Date(endDate)),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = onAddRepairClick,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("btn_add_repair"),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("Tambah Perbaikan", fontSize = 12.sp)
-                    }
-
-                    OutlinedButton(
-                        onClick = onExportClick,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("btn_export_repairs")
-                    ) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("Export PDF", fontSize = 12.sp)
+                        Text(
+                            text = "Tambah Perbaikan",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${format.format(Date(startDate))} - ${format.format(Date(endDate))}",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
+
+            // Right Button: Export PDF (Circular like hamburger menu style)
+            IconButton(
+                onClick = onExportClick,
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(cardColor, CircleShape)
+                    .border(1.dp, cardBorderColor, CircleShape)
+                    .testTag("btn_export_repairs")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Export PDF",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
+    }
+
+    if (showDateRangePicker) {
+        SimpleDateRangePickerDialog(
+            initialStartDate = startDate,
+            initialEndDate = endDate,
+            onDismiss = { showDateRangePicker = false },
+            onDateRangeSelected = { start, end ->
+                onStartDateChange(start)
+                onEndDateChange(end)
+            }
+        )
     }
 
     if (showFilterDialog) {
@@ -415,6 +352,57 @@ fun RepairsScreen(
                     Text("Terapkan", fontWeight = FontWeight.Bold)
                 }
             }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SimpleDateRangePickerDialog(
+    initialStartDate: Long,
+    initialEndDate: Long,
+    onDismiss: () -> Unit,
+    onDateRangeSelected: (Long, Long) -> Unit
+) {
+    val dateRangePickerState = rememberDateRangePickerState(
+        initialSelectedStartDateMillis = initialStartDate,
+        initialSelectedEndDateMillis = initialEndDate
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val start = dateRangePickerState.selectedStartDateMillis
+                    val end = dateRangePickerState.selectedEndDateMillis
+                    if (start != null && end != null) {
+                        onDateRangeSelected(start, end)
+                    } else if (start != null) {
+                        onDateRangeSelected(start, start + 86399000L)
+                    }
+                    onDismiss()
+                }
+            ) {
+                Text("Pilih", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Batal")
+            }
+        }
+    ) {
+        DateRangePicker(
+            state = dateRangePickerState,
+            title = {
+                Text(
+                    text = "Pilih Rentang Tanggal",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 24.dp, top = 16.dp, end = 24.dp)
+                )
+            },
+            modifier = Modifier.weight(1f)
         )
     }
 }
