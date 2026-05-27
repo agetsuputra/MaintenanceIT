@@ -821,7 +821,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             modifier = Modifier
                                 .size(48.dp)
                                 .testTag("btn_drawer_toggle"),
-                            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+                            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
                         ) {
                             Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
                         }
@@ -835,7 +835,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 modifier = Modifier
                                     .size(48.dp)
                                     .testTag("btn_user_profile_floating"),
-                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
                             ) {
                                 Text(
                                     text = currentUsername.take(1).uppercase(),
@@ -850,9 +850,24 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 // 3. Floating Bottom Search Bar
                 val keyboardController = LocalSoftwareKeyboardController.current
                 val searchBarBottomOffset = if (WindowInsets.isImeVisible) {
-                    8.dp
+                    24.dp
                 } else {
                     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+                }
+
+                // Dynamic blending color that guarantees slightly darker background dynamically in both themes
+                val isDark = isSystemInDarkTheme()
+                val bg = MaterialTheme.colorScheme.background
+                val cardColor = if (isDark) {
+                    androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
+                } else {
+                    androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
+                }
+
+                val cardBorderColor = if (isDark) {
+                    androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.15f)
+                } else {
+                    androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.12f)
                 }
 
                 AnimatedVisibility(
@@ -866,16 +881,12 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 ) {
                     Card(
                         shape = RoundedCornerShape(28.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = cardColor),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = BorderStroke(1.dp, cardBorderColor),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(28.dp)
-                            )
                     ) {
                         Row(
                             modifier = Modifier
@@ -1668,14 +1679,23 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
+    // Dynamic blending color that guarantees slightly darker background dynamically in both themes
+    val isDark = isSystemInDarkTheme()
+    val bg = MaterialTheme.colorScheme.background
+    val cardColor = if (isDark) {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
+    } else {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .testTag("asset_card_${asset.inventoryNumber}"),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -2696,6 +2716,20 @@ fun RepairsScreen(
         )
 
         // Date Picker Range Row inside Floating Sticky Card at the bottom
+        val isDark = isSystemInDarkTheme()
+        val bg = MaterialTheme.colorScheme.background
+        val cardColor = if (isDark) {
+            androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
+        } else {
+            androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
+        }
+
+        val cardBorderColor = if (isDark) {
+            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.15f)
+        } else {
+            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.12f)
+        }
+
         Card(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -2703,10 +2737,10 @@ fun RepairsScreen(
                 .padding(bottom = 16.dp)
                 .padding(horizontal = 16.dp)
                 .fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = cardColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+            border = BorderStroke(1.dp, cardBorderColor)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
@@ -2921,19 +2955,9 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
     val isDark = isSystemInDarkTheme()
     val bg = MaterialTheme.colorScheme.background
     val cardColor = if (isDark) {
-        Color(
-            red = (bg.red * 0.75f),
-            green = (bg.green * 0.75f),
-            blue = (bg.blue * 0.75f),
-            alpha = 1.0f
-        )
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
     } else {
-        Color(
-            red = (bg.red * 0.93f),
-            green = (bg.green * 0.93f),
-            blue = (bg.blue * 0.92f),
-            alpha = 1.0f
-        )
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
     }
 
     Card(
@@ -3886,34 +3910,170 @@ fun MaintenanceScreen(
         Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
     )
 
-    Column(
+    // Category filter state for maintenance list
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var selectedCategories by remember { mutableStateOf(setOf<String>()) }
+    var filterAllSelected by remember { mutableStateOf(true) }
+
+    val filteredMaintenances = remember(maintenances, assets, selectedCategories, filterAllSelected) {
+        maintenances.filter { maint ->
+            val matchedAsset = assets.find { it.inventoryNumber == maint.inventoryNumber }
+            val assetType = matchedAsset?.type ?: "Lainnya"
+            filterAllSelected || selectedCategories.contains(assetType)
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
             .testTag("maintenances_screen")
     ) {
-        Text(
-            "Perawatan Rutin Perangkat",
-            fontWeight = FontWeight.ExtraBold,
-            style = MaterialTheme.typography.titleLarge,
-            color = Color(0xFF0277BD)
-        )
+        // Scrollable content
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 210.dp // High bottom padding to scroll past floating card
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Title (scrollable)
+            item {
+                Text(
+                    text = "Laporan Perawatan Rutin",
+                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
-        // Date Picker Range Row
-        Card(
+            // Header with Filter button (scrollable)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Daftar Perawatan (${filteredMaintenances.size})",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showFilterDialog = true }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = "Filter Kategori",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Filter",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            // Routine Maintenance list logic
+            if (filteredMaintenances.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(54.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Tidak ada perawatan rutin pada rentang ini",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(filteredMaintenances, key = { it.id }) { maint ->
+                    MaintItemCard(maintenance = maint, assets = assets, onClick = { onMaintClick(maint) })
+                }
+            }
+        }
+
+        // Floating Gradient Overlay for bottom floating Card
+        val themeBgColor = MaterialTheme.colorScheme.background
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-            shape = RoundedCornerShape(14.dp)
+                .height(220.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            themeBgColor.copy(alpha = 0.15f),
+                            themeBgColor.copy(alpha = 0.50f),
+                            themeBgColor.copy(alpha = 0.85f),
+                            themeBgColor.copy(alpha = 0.95f),
+                            themeBgColor
+                        )
+                    )
+                )
+        )
+
+        // Floating Indigo/Blue Styled Range picker and action Card at bottom
+        val isDark = isSystemInDarkTheme()
+        val bg = MaterialTheme.colorScheme.background
+        val cardColor = if (isDark) {
+            androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
+        } else {
+            androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
+        }
+
+        val cardBorderColor = if (isDark) {
+            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.15f)
+        } else {
+            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.12f)
+        }
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp)
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = cardColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, cardBorderColor)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    "Rentang Waktu Laporan:",
-                    fontWeight = FontWeight.Medium,
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(bottom = 6.dp)
+                    text = "Rentang Waktu Laporan:",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
 
                 Row(
@@ -3925,7 +4085,7 @@ fun MaintenanceScreen(
                         modifier = Modifier
                             .weight(1f)
                             .background(
-                                MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp)
                             )
                             .clickable { startPicker.show() }
@@ -3934,19 +4094,19 @@ fun MaintenanceScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(format.format(Date(startDate)), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Icon(imageVector = Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(6.dp))
+                            Text(format.format(Date(startDate)), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
 
-                    Text(" s.d ", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
+                    Text(" s.d ", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .background(
-                                MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp)
                             )
                             .clickable { endPicker.show() }
@@ -3955,81 +4115,126 @@ fun MaintenanceScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(format.format(Date(endDate)), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Icon(imageVector = Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(6.dp))
+                            Text(format.format(Date(endDate)), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onAddMaintClick,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_add_maintenance"),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Tambah Perawatan", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onExportClick,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_export_maintenances"),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Export PDF", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
+    }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onAddMaintClick,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("btn_add_maintenance"),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0277BD))
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Tambah Perawatan", fontSize = 12.sp)
+    if (showFilterDialog) {
+        val availableCategories = listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
+        AlertDialog(
+            onDismissRequest = { showFilterDialog = false },
+            title = { Text("Filter Kategori Perangkat", fontWeight = FontWeight.Bold) },
+            text = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    filterAllSelected = !filterAllSelected
+                                    if (filterAllSelected) {
+                                        selectedCategories = emptySet()
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = filterAllSelected,
+                                onCheckedChange = { checked ->
+                                    filterAllSelected = checked
+                                    if (checked) {
+                                        selectedCategories = emptySet()
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Semua Kategori (All)")
+                        }
+                    }
+                    items(availableCategories) { cat ->
+                        val isChecked = !filterAllSelected && selectedCategories.contains(cat)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val current = selectedCategories.toMutableSet()
+                                    if (current.contains(cat)) {
+                                        current.remove(cat)
+                                    } else {
+                                        current.add(cat)
+                                    }
+                                    selectedCategories = current
+                                    filterAllSelected = current.isEmpty()
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = { checked ->
+                                    val current = selectedCategories.toMutableSet()
+                                    if (checked) {
+                                        current.add(cat)
+                                    } else {
+                                        current.remove(cat)
+                                    }
+                                    selectedCategories = current
+                                    filterAllSelected = current.isEmpty()
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(cat)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFilterDialog = false }) {
+                    Text("Terapkan", fontWeight = FontWeight.Bold)
+                }
             }
-
-            OutlinedButton(
-                onClick = onExportClick,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("btn_export_maintenances")
-            ) {
-                Icon(Icons.Default.Share, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Export PDF", fontSize = 12.sp)
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            text = "Daftar Perawatan Rutin (${maintenances.size})",
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
         )
-
-        if (maintenances.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(54.dp))
-                    Text("Tidak ada perawatan rutin pada rentang ini", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(maintenances, key = { it.id }) { maint ->
-                    MaintItemCard(maintenance = maint, assets = assets, onClick = { onMaintClick(maint) })
-                }
-                item {
-                    Spacer(modifier = Modifier.height(100.dp))
-                }
-            }
-        }
     }
 }
 
@@ -4037,76 +4242,142 @@ fun MaintenanceScreen(
 fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> Unit) {
     val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(maintenance.startTime))
     val matchedAsset = assets.find { it.inventoryNumber == maintenance.inventoryNumber }
+    val assetName = matchedAsset?.name ?: "Perangkat Tidak Dikenal"
+    val assetType = matchedAsset?.type ?: "Lainnya"
+
+    val statusColor = when (maintenance.status) {
+        "Dalam Pengerjaan" -> Color(0xFF1976D2) // Blue
+        else -> Color(0xFF2E7D32) // Green (Selesai, Selesai & Terverifikasi)
+    }
+
+    // Dynamic blending color that guarantees slightly darker background dynamically in both themes
+    val isDark = isSystemInDarkTheme()
+    val bg = MaterialTheme.colorScheme.background
+    val cardColor = if (isDark) {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
+    } else {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .testTag("maint_card_${maintenance.id}"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = matchedAsset?.name ?: "Perangkat Tidak Dikenal",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(2.dp))
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            // First Row: Asset Name and Status badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = "ID: ${maintenance.inventoryNumber}",
-                    fontWeight = FontWeight.Medium,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF0277BD)
-                )
-                val statusColor = when (maintenance.status) {
-                    "Dalam Pengerjaan" -> Color(0xFF0277BD) // Cyan/Blue
-                    "Selesai" -> Color(0xFF2E7D32) // Green
-                    "Selesai & Terverifikasi" -> Color(0xFF2E7D32) // Green
-                    else -> Color(0xFF2E7D32)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = assetName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Inventaris: ${maintenance.inventoryNumber}",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "Kategori: $assetType",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    )
                 }
+
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = statusColor.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
                 ) {
                     Text(
                         text = maintenance.status,
                         color = statusColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Tindakan: ${maintenance.actionTaken}",
-                fontWeight = FontWeight.Medium,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Thin Horizontal Divider Line like main assets card style
+            Divider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Second Row: Tindakan (on the bottom left) and Teknisi & Date (on the bottom right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(2.dp))
-                    Text(maintenance.technician, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Tindakan
+                Column(modifier = Modifier.weight(1.2f)) {
+                    Text(
+                        text = "Tindakan",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = maintenance.actionTaken,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-                Text(dateStr, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                // Teknisi & Waktu
+                Column(
+                    modifier = Modifier.weight(0.8f),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "Teknisi & Waktu",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = maintenance.technician,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(1.dp))
+                    Text(
+                        text = dateStr,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
