@@ -778,15 +778,21 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 // --- 1.5 Custom Gradient Overlays ---
                 val imeBottomPaddingForSearch = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
                 val isDashboardKeyboardOpen = imeBottomPaddingForSearch > 0.dp
+                val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
+                    imeBottomPaddingForSearch + 16.dp
+                } else {
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+                }
 
                 if (currentSubScreen == SubScreen.List) {
                     val themeBgColor = MaterialTheme.colorScheme.background
+                    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     
-                    // Top Gradient Overlay (for status bar & floating buttons readability)
+                    // Top Gradient Overlay (starts from floating profile area and fades upward)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(130.dp)
+                            .height(statusBarHeight + 72.dp)
                             .align(Alignment.TopCenter)
                             .background(
                                 Brush.verticalGradient(
@@ -801,14 +807,14 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             )
                     )
 
-                    // Bottom Gradient Overlay (for navigation bar & floating search bar readability) - ONLY on Dashboard
+                    // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ONLY on Dashboard
                     if (currentTab == AppTab.Dashboard) {
+                        val bottomGradientHeight = searchBarBottomOffset + 56.dp
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(if (isDashboardKeyboardOpen) 100.dp else 150.dp)
+                                .height(bottomGradientHeight)
                                 .align(Alignment.BottomCenter)
-                                .padding(bottom = if (isDashboardKeyboardOpen) imeBottomPaddingForSearch else 0.dp)
                                 .background(
                                     Brush.verticalGradient(
                                         colors = listOf(
@@ -873,11 +879,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
                 // 3. Floating Bottom Search Bar
                 val keyboardController = LocalSoftwareKeyboardController.current
-                val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
-                    imeBottomPaddingForSearch + 16.dp
-                } else {
-                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
-                }
 
                 // Dynamic blending color that guarantees slightly darker background dynamically in both themes
                 val isDark = isSystemInDarkTheme()
@@ -1873,7 +1874,7 @@ fun AddAssetForm(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = statusBarHeight + 84.dp,
-                bottom = buttonsBottomOffset + 66.dp,
+                bottom = buttonsBottomOffset + 64.dp,
                 start = 16.dp,
                 end = 16.dp
             ),
@@ -2113,11 +2114,11 @@ fun AddAssetForm(
             }
         }
 
-        // Top Gradient (same as Dashboard)
+        // Top Gradient (starts from floating profile area and fades upward)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp)
+                .height(statusBarHeight + 72.dp)
                 .align(Alignment.TopCenter)
                 .background(
                     Brush.verticalGradient(
@@ -2132,13 +2133,13 @@ fun AddAssetForm(
                 )
         )
 
-        // Bottom Gradient Overlay (same as Dashboard)
+        // Bottom Gradient Overlay (anchored directly to the top edge of the action buttons)
+        val bottomGradientHeight = buttonsBottomOffset + 48.dp
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (isKeyboardOpen) 100.dp else 130.dp)
+                .height(bottomGradientHeight)
                 .align(Alignment.BottomCenter)
-                .padding(bottom = if (isKeyboardOpen) imeBottomPaddingForButtons else 0.dp)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
