@@ -124,12 +124,38 @@ dependencies {
   "ksp"(libs.moshi.kotlin.codegen)
 }
 
-tasks.register<Copy>("copyDebugApk") {
-    from(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"))
-    into(rootProject.file(".build-outputs"))
+abstract class CopyApkTask : DefaultTask() {
+    @get:Input
+    abstract val sourceFilePath: Property<String>
+
+    @get:Internal
+    abstract val destDirPath1: Property<String>
+
+    @get:Internal
+    abstract val destDirPath2: Property<String>
+
+    @TaskAction
+    fun run() {
+        val apk = File(sourceFilePath.get())
+        if (apk.exists()) {
+            val d1 = File(destDirPath1.get())
+            val d2 = File(destDirPath2.get())
+            d1.mkdirs()
+            d2.mkdirs()
+            apk.copyTo(File(d1, "app-debug.apk"), overwrite = true)
+            apk.copyTo(File(d2, "app-debug.apk"), overwrite = true)
+            logger.quiet("SUCCESS: Copied APK to .build-outputs and project root directory.")
+        }
+    }
+}
+
+val copyApkTask = tasks.register<CopyApkTask>("copyApkTask") {
+    sourceFilePath.set(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile.absolutePath)
+    destDirPath1.set(rootProject.file(".build-outputs").absolutePath)
+    destDirPath2.set(rootProject.projectDir.absolutePath)
 }
 
 tasks.matching { it.name == "assembleDebug" }.configureEach {
-    finalizedBy("copyDebugApk")
+    finalizedBy(copyApkTask)
 }
 
