@@ -395,11 +395,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var userMenuExpanded by remember { mutableStateOf(false) }
     var hamburgerMenuExpanded by remember { mutableStateOf(false) }
 
-    var mainScreenHeightPx by remember { mutableStateOf(0f) }
-    var rootTopYPx by remember { mutableStateOf(0f) }
-    var searchBarTopYPx by remember { mutableStateOf(0f) }
-    var searchBarHeightPx by remember { mutableStateOf(0f) }
-
     val imeBottomPaddingForSearch = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val isDashboardKeyboardOpen = imeBottomPaddingForSearch > 0.dp
     val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
@@ -408,21 +403,9 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
     }
 
-    val localDensity = LocalDensity.current
-    val computedSearchBarTopDp by remember(mainScreenHeightPx, rootTopYPx, searchBarTopYPx, searchBarBottomOffset) {
-        derivedStateOf {
-            if (mainScreenHeightPx > 0f && searchBarTopYPx > 0f) {
-                val measuredHeight = mainScreenHeightPx - (searchBarTopYPx - rootTopYPx)
-                if (measuredHeight > 0f) {
-                    with(localDensity) { measuredHeight.toDp() }
-                } else {
-                    searchBarBottomOffset + 56.dp
-                }
-            } else {
-                searchBarBottomOffset + 56.dp
-            }
-        }
-    }
+    val searchBarHeight = 56.dp
+    val searchBarAnchor = searchBarBottomOffset + searchBarHeight
+    val computedSearchBarTopDp = searchBarAnchor + 16.dp
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -653,20 +636,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .onGloballyPositioned { coordinates ->
-                        if (coordinates.isAttached) {
-                            val newHeight = coordinates.size.height.toFloat()
-                            val newTopY = coordinates.positionInWindow().y
-                            val heightDiff = mainScreenHeightPx - newHeight
-                            if ((if (heightDiff < 0) -heightDiff else heightDiff) > 1f) {
-                                mainScreenHeightPx = newHeight
-                            }
-                            val topYDiff = rootTopYPx - newTopY
-                            if ((if (topYDiff < 0) -topYDiff else topYDiff) > 1f) {
-                                rootTopYPx = newTopY
-                            }
-                        }
-                    }
             ) {
                 Scaffold(
                     modifier = modifier.testTag("main_screen_scaffold"),
@@ -688,7 +657,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 isFirebaseEnabled = viewModel.isFirebaseEnabled,
                                                 onAssetClick = { asset -> showingAssetDetail = asset },
                                                 searchQuery = searchQuery,
-                                                searchBarTopDp = computedSearchBarTopDp
+                                                searchBarTopDp = searchBarAnchor
                                             )
                                         }
                                         SubScreen.AddAsset -> {
@@ -853,14 +822,11 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
                     // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ONLY on Dashboard
                     if (currentTab == AppTab.Dashboard) {
-                        val bottomAnchor = if (isDashboardKeyboardOpen) imeBottomPaddingForSearch else 0.dp
-                        val computedGradientHeight = maxOf(0.dp, computedSearchBarTopDp - bottomAnchor)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(computedGradientHeight)
+                                .height(computedSearchBarTopDp)
                                 .align(Alignment.BottomCenter)
-                                .padding(bottom = bottomAnchor)
                                 .background(
                                     Brush.verticalGradient(
                                         colors = listOf(
@@ -958,20 +924,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
-                            .onGloballyPositioned { coords ->
-                                if (coords.isAttached) {
-                                    val newTopY = coords.positionInWindow().y
-                                    val newHeight = coords.size.height.toFloat()
-                                    val topYDiff = searchBarTopYPx - newTopY
-                                    if ((if (topYDiff < 0) -topYDiff else topYDiff) > 1f) {
-                                        searchBarTopYPx = newTopY
-                                    }
-                                    val heightDiff = searchBarHeightPx - newHeight
-                                    if ((if (heightDiff < 0) -heightDiff else heightDiff) > 1f) {
-                                        searchBarHeightPx = newHeight
-                                    }
-                                }
-                            }
                     ) {
                         Row(
                             modifier = Modifier
@@ -1474,7 +1426,7 @@ fun DashboardScreen(
             start = 16.dp,
             end = 16.dp,
             top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
-            bottom = dashboardBottomPadding
+            bottom = 16.dp
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -1642,7 +1594,11 @@ fun DashboardScreen(
         }
 
         item {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(dashboardBottomPadding)
+            )
         }
     }
 
@@ -1920,51 +1876,21 @@ fun AddAssetForm(
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    var formContainerHeightPx by remember { mutableStateOf(0f) }
-    var formContainerTopYPx by remember { mutableStateOf(0f) }
-    var buttonsTopYPx by remember { mutableStateOf(0f) }
-
-    val localDensity = LocalDensity.current
-    val computedButtonsTopDp by remember(formContainerHeightPx, formContainerTopYPx, buttonsTopYPx, buttonsBottomOffset) {
-        derivedStateOf {
-            if (formContainerHeightPx > 0f && buttonsTopYPx > 0f) {
-                val measuredHeight = formContainerHeightPx - (buttonsTopYPx - formContainerTopYPx)
-                if (measuredHeight > 0f) {
-                    with(localDensity) { measuredHeight.toDp() }
-                } else {
-                    buttonsBottomOffset + 50.dp
-                }
-            } else {
-                // Perfect mathematical initial fallback
-                buttonsBottomOffset + 50.dp
-            }
-        }
-    }
+    val buttonsRowHeight = 66.dp
+    val buttonsFadeArea = 16.dp
+    val buttonsAnchor = buttonsBottomOffset + buttonsRowHeight
+    val computedButtonsTopDp = buttonsAnchor + buttonsFadeArea
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .testTag("add_asset_form")
-            .onGloballyPositioned { coords ->
-                if (coords.isAttached) {
-                    val newHeight = coords.size.height.toFloat()
-                    val newTopY = coords.positionInWindow().y
-                    val heightDiff = formContainerHeightPx - newHeight
-                    if ((if (heightDiff < 0) -heightDiff else heightDiff) > 1f) {
-                        formContainerHeightPx = newHeight
-                    }
-                    val topYDiff = formContainerTopYPx - newTopY
-                    if ((if (topYDiff < 0) -topYDiff else topYDiff) > 1f) {
-                        formContainerTopYPx = newTopY
-                    }
-                }
-            }
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = statusBarHeight + 84.dp,
-                bottom = computedButtonsTopDp + 16.dp,
+                bottom = 16.dp,
                 start = 16.dp,
                 end = 16.dp
             ),
@@ -2202,6 +2128,14 @@ fun AddAssetForm(
                         .testTag("tf_asset_desc")
                 )
             }
+
+            item {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(buttonsAnchor + 16.dp)
+                )
+            }
         }
 
         // Top Gradient (starts from floating profile area and fades upward)
@@ -2224,14 +2158,11 @@ fun AddAssetForm(
         )
 
         // Bottom Gradient Overlay (anchored directly to the top edge of the action buttons)
-        val bottomAnchor = if (isKeyboardOpen) imeBottomPaddingForButtons else 0.dp
-        val computedGradientHeight = maxOf(0.dp, computedButtonsTopDp - bottomAnchor)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(computedGradientHeight)
+                .height(computedButtonsTopDp)
                 .align(Alignment.BottomCenter)
-                .padding(bottom = bottomAnchor)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -2246,6 +2177,17 @@ fun AddAssetForm(
                 )
         )
 
+        val cardColor = if (isDark) {
+            androidx.compose.ui.graphics.lerp(themeBgColor, Color.Black, 0.25f)
+        } else {
+            androidx.compose.ui.graphics.lerp(themeBgColor, Color.Black, 0.07f)
+        }
+        val cardBorderColor = if (isDark) {
+            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.15f)
+        } else {
+            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.12f)
+        }
+
         // Floating Row of cancel and save buttons following the keyboard
         Row(
             modifier = Modifier
@@ -2253,15 +2195,9 @@ fun AddAssetForm(
                 .padding(bottom = buttonsBottomOffset)
                 .padding(horizontal = 16.dp)
                 .fillMaxWidth()
-                .onGloballyPositioned { coords ->
-                    if (coords.isAttached) {
-                        val newTopY = coords.positionInWindow().y
-                        val topYDiff = buttonsTopYPx - newTopY
-                        if ((if (topYDiff < 0) -topYDiff else topYDiff) > 1f) {
-                            buttonsTopYPx = newTopY
-                        }
-                    }
-                },
+                .background(cardColor, shape = RoundedCornerShape(16.dp))
+                .border(BorderStroke(1.dp, cardBorderColor), shape = RoundedCornerShape(16.dp))
+                .padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
