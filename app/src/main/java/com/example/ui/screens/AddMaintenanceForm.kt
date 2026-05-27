@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -353,13 +355,21 @@ fun AddMaintenanceForm(
                     .padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedButton(
+                val isDark = isSystemInDarkTheme()
+                val themeBgColor = if (isDark) Color(0xFF111827) else Color(0xFFF9FAFB)
+                Button(
                     onClick = {
                         keyboardController?.hide()
                         focusManager.clearFocus(force = true)
                         onCancel()
                     },
                     shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, if (isDark) Color(0xFF374151) else Color(0xFFD1D5DB)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = themeBgColor,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(50.dp)
