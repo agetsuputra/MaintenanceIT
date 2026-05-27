@@ -80,9 +80,9 @@ fun RepairsScreen(
                 start = 16.dp,
                 end = 16.dp,
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
-                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 100.dp // Comfortable space to scroll past the bottom bar
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp // Distance from lowest repair card to Catat Perbaikan is 16.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Title (scrollable)
             item {
@@ -203,47 +203,28 @@ fun RepairsScreen(
                 )
             }
 
-            // Center Button: Wide "Tambah Perbaikan" (Styled like Searchbar)
+            // Center Button: Wide "Catat Perbaikan" (Styled like Searchbar, Centered, No Shadow)
             Card(
                 onClick = onAddRepairClick,
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(containerColor = cardColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 border = BorderStroke(1.dp, cardBorderColor),
                 modifier = Modifier
                     .weight(1f)
                     .height(56.dp)
                     .testTag("btn_add_repair")
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Icon Tambah",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                    Text(
+                        text = "Catat Perbaikan",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Tambah Perbaikan",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "${format.format(Date(startDate))} - ${format.format(Date(endDate))}",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
 
@@ -450,29 +431,32 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Inventaris: ${repair.inventoryNumber}",
-                        fontWeight = FontWeight.SemiBold,
+                        text = repair.inventoryNumber,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = "Kategori: $assetType",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = statusColor.copy(alpha = 0.12f),
-                ) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = statusColor.copy(alpha = 0.12f),
+                    ) {
+                        Text(
+                            text = repair.status,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = repair.status,
-                        color = statusColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        text = assetType,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -480,7 +464,7 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(10.dp))
 
             // Thin Horizontal Divider Line like main assets card style
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.padding(vertical = 4.dp),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
             )
@@ -496,12 +480,6 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                 // Kendala
                 Column(modifier = Modifier.weight(1.2f)) {
                     Text(
-                        text = "Kendala",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
                         text = repair.problem,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
@@ -516,12 +494,6 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                     modifier = Modifier.weight(0.8f),
                     horizontalAlignment = Alignment.End
                 ) {
-                    Text(
-                        text = "Teknisi",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = repair.technician,
                         style = MaterialTheme.typography.bodySmall,

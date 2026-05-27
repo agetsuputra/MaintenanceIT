@@ -371,7 +371,15 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 onStartDateChange = { viewModel.filterStartDate.value = it },
                                                 onEndDateChange = { viewModel.filterEndDate.value = it },
                                                 onRepairClick = { showingRepairDetail = it },
-                                                onAddRepairClick = { currentSubScreen = SubScreen.AddRepair }
+                                                onAddRepairClick = { currentSubScreen = SubScreen.AddRepair },
+                                                onExportClick = {
+                                                    val f = viewModel.exportToPdf(context, "repairs")
+                                                    if (f != null) {
+                                                        viewModel.shareExportFile(context, f)
+                                                    } else {
+                                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             )
                                         }
                                         SubScreen.AddRepair -> {
@@ -408,7 +416,15 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 onStartDateChange = { viewModel.filterStartDate.value = it },
                                                 onEndDateChange = { viewModel.filterEndDate.value = it },
                                                 onMaintClick = { showingMaintenanceDetail = it },
-                                                onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance }
+                                                onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance },
+                                                onExportClick = {
+                                                    val f = viewModel.exportToPdf(context, "maintenances")
+                                                    if (f != null) {
+                                                        viewModel.shareExportFile(context, f)
+                                                    } else {
+                                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             )
                                         }
                                         SubScreen.AddMaintenance -> {

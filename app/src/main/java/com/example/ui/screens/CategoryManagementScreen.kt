@@ -44,7 +44,7 @@ fun CategoryManagementScreen(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .padding(top = 84.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
             .testTag("category_management_screen")
     ) {
         Row(
