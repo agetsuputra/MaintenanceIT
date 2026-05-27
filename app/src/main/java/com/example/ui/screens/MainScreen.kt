@@ -34,6 +34,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -777,25 +778,27 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             )
                     )
 
-                    // Bottom Gradient Overlay (for navigation bar & floating search bar readability)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(150.dp)
-                            .align(Alignment.BottomCenter)
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        themeBgColor.copy(alpha = 0.15f),
-                                        themeBgColor.copy(alpha = 0.50f),
-                                        themeBgColor.copy(alpha = 0.85f),
-                                        themeBgColor.copy(alpha = 0.95f),
-                                        themeBgColor
+                    // Bottom Gradient Overlay (for navigation bar & floating search bar readability) - ONLY on Dashboard
+                    if (currentTab == AppTab.Dashboard) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            themeBgColor.copy(alpha = 0.15f),
+                                            themeBgColor.copy(alpha = 0.50f),
+                                            themeBgColor.copy(alpha = 0.85f),
+                                            themeBgColor.copy(alpha = 0.95f),
+                                            themeBgColor
+                                        )
                                     )
                                 )
-                            )
-                    )
+                        )
+                    }
                 }
 
                 // 2. Floating Buttons (on top of everything else)
@@ -858,7 +861,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     exit = fadeOut(),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .imePadding()
                         .padding(bottom = searchBarBottomOffset)
                         .padding(horizontal = 16.dp)
                 ) {
@@ -2915,15 +2917,33 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
         else -> Color(0xFF2E7D32) // Green
     }
 
+    // Dynamic blending color that guarantees slightly darker background dynamically in both themes
+    val isDark = isSystemInDarkTheme()
+    val bg = MaterialTheme.colorScheme.background
+    val cardColor = if (isDark) {
+        Color(
+            red = (bg.red * 0.75f),
+            green = (bg.green * 0.75f),
+            blue = (bg.blue * 0.75f),
+            alpha = 1.0f
+        )
+    } else {
+        Color(
+            red = (bg.red * 0.93f),
+            green = (bg.green * 0.93f),
+            blue = (bg.blue * 0.92f),
+            alpha = 1.0f
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .testTag("repair_card_${repair.id}"),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -2972,7 +2992,15 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Thin Horizontal Divider Line like main assets card style
+            Divider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Second Row: Kendala (on the bottom left) and Teknisi (on the bottom right)
             Row(
