@@ -51,34 +51,6 @@ fun MaintenanceScreen(
     val context = LocalContext.current
     val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
-    val startPicker = remember(context) {
-        DatePickerDialog(
-            context,
-            { _, y, m, d ->
-                val cal = Calendar.getInstance()
-                cal.set(y, m, d, 0, 0, 0)
-                onStartDateChange(cal.timeInMillis)
-            },
-            Calendar.getInstance().get(Calendar.YEAR),
-            Calendar.getInstance().get(Calendar.MONTH),
-            Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-        )
-    }
-
-    val endPicker = remember(context) {
-        DatePickerDialog(
-            context,
-            { _, y, m, d ->
-                val cal = Calendar.getInstance()
-                cal.set(y, m, d, 23, 59, 59)
-                onEndDateChange(cal.timeInMillis)
-            },
-            Calendar.getInstance().get(Calendar.YEAR),
-            Calendar.getInstance().get(Calendar.MONTH),
-            Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-        )
-    }
-
     // Category filter state for maintenance list
     var showFilterDialog by remember { mutableStateOf(false) }
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
@@ -236,7 +208,20 @@ fun MaintenanceScreen(
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                                 shape = RoundedCornerShape(8.dp)
                             )
-                            .clickable { startPicker.show() }
+                            .clickable {
+                                val cal = Calendar.getInstance().apply { timeInMillis = startDate }
+                                DatePickerDialog(
+                                    context,
+                                    { _, y, m, d ->
+                                        val selectedCal = Calendar.getInstance()
+                                        selectedCal.set(y, m, d, 0, 0, 0)
+                                        onStartDateChange(selectedCal.timeInMillis)
+                                    },
+                                    cal.get(Calendar.YEAR),
+                                    cal.get(Calendar.MONTH),
+                                    cal.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            }
                             .padding(10.dp)
                             .testTag("btn_filter_start_maint"),
                         contentAlignment = Alignment.Center
@@ -262,7 +247,20 @@ fun MaintenanceScreen(
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                                 shape = RoundedCornerShape(8.dp)
                             )
-                            .clickable { endPicker.show() }
+                            .clickable {
+                                val cal = Calendar.getInstance().apply { timeInMillis = endDate }
+                                DatePickerDialog(
+                                    context,
+                                    { _, y, m, d ->
+                                        val selectedCal = Calendar.getInstance()
+                                        selectedCal.set(y, m, d, 23, 59, 59)
+                                        onEndDateChange(selectedCal.timeInMillis)
+                                    },
+                                    cal.get(Calendar.YEAR),
+                                    cal.get(Calendar.MONTH),
+                                    cal.get(Calendar.DAY_OF_MONTH)
+                                ).show()
+                            }
                             .padding(10.dp)
                             .testTag("btn_filter_end_maint"),
                         contentAlignment = Alignment.Center

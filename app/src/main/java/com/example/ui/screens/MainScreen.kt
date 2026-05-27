@@ -17,6 +17,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -476,19 +477,23 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     
                     // Top Gradient Overlay (starts from floating profile area and fades upward)
                     com.example.ui.components.TopFadeOverlay(
-                        height = statusBarHeight + 72.dp,
+                        height = statusBarHeight + 76.dp,
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
-
+ 
                     // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ONLY on Dashboard
                     if (currentTab == AppTab.Dashboard) {
+                        val bottomEdge = (slotMetrics.bottomOffset - 16.dp).coerceAtLeast(0.dp)
+                        val gradientHeight = 56.dp + 16.dp
                         com.example.ui.components.BottomFadeOverlay(
-                            height = slotMetrics.anchorHeight + 16.dp,
-                            modifier = Modifier.align(Alignment.BottomCenter)
+                            height = gradientHeight,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = bottomEdge)
                         )
                     }
                 }
-
+ 
                 // 2. Floating Buttons (on top of everything else)
                 if (currentSubScreen == SubScreen.List) {
                     Row(
@@ -513,7 +518,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         ) {
                             Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
                         }
-
+ 
                         Box {
                             FloatingActionButton(
                                 onClick = { userMenuExpanded = true },
@@ -534,13 +539,34 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         }
                     }
                 }
-
+ 
                 // 3. Floating Bottom Search Bar
                 val keyboardController = LocalSoftwareKeyboardController.current
-
+ 
                 val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
                 val cardBorderColor = com.example.ui.theme.AdaptiveColors.cardBorderColor(cardColor)
+ 
+                val isDarkTheme = isSystemInDarkTheme()
+                val searchBarElementColor = if (isDarkTheme) {
+                    Color(0xFF888888)
+                } else {
+                    Color(0xFF555555)
+                }
+                val searchBarActiveTextColor = if (isDarkTheme) {
+                    Color(0xFFB0B0B0)
+                } else {
+                    Color(0xFF222222)
+                }
 
+                val addInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val isAddPressed by addInteractionSource.collectIsPressedAsState()
+
+                val scanInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val isScanPressed by scanInteractionSource.collectIsPressedAsState()
+
+                val addIconColor = if (isAddPressed) searchBarActiveTextColor else searchBarElementColor
+                val scanIconColor = if (isScanPressed) searchBarActiveTextColor else searchBarElementColor
+ 
                 AnimatedVisibility(
                     visible = (currentTab == AppTab.Dashboard && currentSubScreen == SubScreen.List),
                     enter = fadeIn(),
@@ -562,20 +588,48 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            IconButton(
+                                onClick = {
+                                    currentSubScreen = SubScreen.AddAsset
+                                },
+                                interactionSource = addInteractionSource,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .testTag("btn_searchbar_add_asset")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Tambah Aset Baru",
+                                    tint = addIconColor
+                                )
+                            }
+ 
+                            Spacer(modifier = Modifier.width(0.dp))
+ 
                             TextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
-                                placeholder = { Text("cari kode atau nama...") },
+                                placeholder = {
+                                    Text(
+                                        text = "cari kode atau nama...",
+                                        color = searchBarElementColor
+                                    )
+                                },
                                 singleLine = true,
                                 colors = TextFieldDefaults.colors(
+                                    focusedTextColor = searchBarActiveTextColor,
+                                    unfocusedTextColor = searchBarActiveTextColor,
                                     focusedContainerColor = Color.Transparent,
                                     unfocusedContainerColor = Color.Transparent,
                                     disabledContainerColor = Color.Transparent,
                                     focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    focusedPlaceholderColor = searchBarElementColor,
+                                    unfocusedPlaceholderColor = searchBarElementColor,
+                                    cursorColor = searchBarActiveTextColor
                                 ),
                                 keyboardOptions = KeyboardOptions(
                                     imeAction = ImeAction.Search
@@ -599,6 +653,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     .weight(1f)
                                     .testTag("tf_search_asset")
                             )
+ 
                             IconButton(
                                 onClick = {
                                     showingBarcodeScanner = { code ->
@@ -614,12 +669,15 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                         }
                                     }
                                 },
-                                modifier = Modifier.testTag("btn_dashboard_scan")
+                                interactionSource = scanInteractionSource,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .testTag("btn_dashboard_scan")
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.QrCodeScanner,
                                     contentDescription = "Scan QR/Barcode",
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = scanIconColor
                                 )
                             }
                         }

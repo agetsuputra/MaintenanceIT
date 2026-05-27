@@ -57,7 +57,7 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
                         text = asset.inventoryNumber,
                         fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
