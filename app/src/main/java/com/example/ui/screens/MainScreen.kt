@@ -511,7 +511,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 }
  
                 // 2. Floating Buttons (on top of everything else)
-                if (currentSubScreen == SubScreen.List || currentSubScreen == SubScreen.AddAsset) {
+                if (currentSubScreen == SubScreen.List || currentSubScreen == SubScreen.AddAsset || currentSubScreen == SubScreen.AddRepair || currentSubScreen == SubScreen.AddMaintenance) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -550,6 +550,38 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
                             ) {
                                 Icon(Icons.Default.Close, contentDescription = "Kembali ke Dashboard")
+                            }
+                        } else if (currentSubScreen == SubScreen.AddRepair) {
+                            FloatingActionButton(
+                                onClick = {
+                                    currentSubScreen = SubScreen.List
+                                    prefilledInventoryNumber = null
+                                },
+                                shape = CircleShape,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag("btn_close_add_repair"),
+                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Kembali")
+                            }
+                        } else if (currentSubScreen == SubScreen.AddMaintenance) {
+                            FloatingActionButton(
+                                onClick = {
+                                    currentSubScreen = SubScreen.List
+                                    prefilledInventoryNumber = null
+                                },
+                                shape = CircleShape,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag("btn_close_add_maint"),
+                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Kembali")
                             }
                         } else {
                             Box {
