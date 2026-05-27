@@ -618,12 +618,12 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Scaffold(
-                    modifier = modifier.testTag("main_screen_scaffold")
+                    modifier = modifier.testTag("main_screen_scaffold"),
+                    contentWindowInsets = WindowInsets(0.dp)
                 ) { innerPadding ->
                     Surface(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
+                            .fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
@@ -776,6 +776,9 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 }
 
                 // --- 1.5 Custom Gradient Overlays ---
+                val imeBottomPaddingForSearch = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+                val isDashboardKeyboardOpen = imeBottomPaddingForSearch > 0.dp
+
                 if (currentSubScreen == SubScreen.List) {
                     val themeBgColor = MaterialTheme.colorScheme.background
                     
@@ -803,8 +806,9 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(150.dp)
+                                .height(if (isDashboardKeyboardOpen) 100.dp else 150.dp)
                                 .align(Alignment.BottomCenter)
+                                .padding(bottom = if (isDashboardKeyboardOpen) imeBottomPaddingForSearch else 0.dp)
                                 .background(
                                     Brush.verticalGradient(
                                         colors = listOf(
@@ -869,10 +873,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
                 // 3. Floating Bottom Search Bar
                 val keyboardController = LocalSoftwareKeyboardController.current
-                val imeBottomPaddingForSearch = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-                val isDashboardKeyboardOpen = imeBottomPaddingForSearch > 0.dp
                 val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
-                    imeBottomPaddingForSearch + 24.dp
+                    imeBottomPaddingForSearch + 16.dp
                 } else {
                     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
                 }
@@ -1403,7 +1405,7 @@ fun DashboardScreen(
     val imeBottomPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val isKeyboardOpen = imeBottomPadding > 0.dp
     val dashboardBottomPadding = if (isKeyboardOpen) {
-        imeBottomPadding + 96.dp
+        imeBottomPadding + 88.dp
     } else {
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp
     }
@@ -1850,11 +1852,12 @@ fun AddAssetForm(
     }
 
     val themeBgColor = MaterialTheme.colorScheme.background
+    val isDark = isSystemInDarkTheme()
 
     val imeBottomPaddingForButtons = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val isKeyboardOpen = imeBottomPaddingForButtons > 0.dp
     val buttonsBottomOffset = if (isKeyboardOpen) {
-        imeBottomPaddingForButtons + 24.dp
+        imeBottomPaddingForButtons + 16.dp
     } else {
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
     }
@@ -1870,7 +1873,7 @@ fun AddAssetForm(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = statusBarHeight + 84.dp,
-                bottom = buttonsBottomOffset + 76.dp,
+                bottom = buttonsBottomOffset + 66.dp,
                 start = 16.dp,
                 end = 16.dp
             ),
@@ -2133,8 +2136,9 @@ fun AddAssetForm(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp)
+                .height(if (isKeyboardOpen) 100.dp else 130.dp)
                 .align(Alignment.BottomCenter)
+                .padding(bottom = if (isKeyboardOpen) imeBottomPaddingForButtons else 0.dp)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -2168,6 +2172,7 @@ fun AddAssetForm(
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                 colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = themeBgColor,
                     contentColor = MaterialTheme.colorScheme.primary
                 ),
                 elevation = null,
@@ -2202,6 +2207,12 @@ fun AddAssetForm(
                 },
                 shape = RoundedCornerShape(12.dp),
                 enabled = isValid,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = if (isDark) Color(0xFF333333) else Color(0xFFE2E8F0),
+                    disabledContentColor = if (isDark) Color(0xFF757575) else Color(0xFF94A3B8)
+                ),
                 elevation = null,
                 modifier = Modifier
                     .weight(1f)
