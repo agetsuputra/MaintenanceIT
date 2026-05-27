@@ -869,7 +869,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
                 // 3. Floating Bottom Search Bar
                 val keyboardController = LocalSoftwareKeyboardController.current
-                val searchBarBottomOffset = if (WindowInsets.isImeVisible) {
+                val isDashboardKeyboardOpen = WindowInsets.isImeVisible
+                val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
                     24.dp
                 } else {
                     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
@@ -1841,7 +1842,8 @@ fun AddAssetForm(
 
     val themeBgColor = MaterialTheme.colorScheme.background
 
-    val buttonsBottomOffset = if (WindowInsets.isImeVisible) {
+    val isKeyboardOpen = WindowInsets.isImeVisible
+    val buttonsBottomOffset = if (isKeyboardOpen) {
         24.dp
     } else {
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
