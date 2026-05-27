@@ -74,11 +74,10 @@ dependencies {
   implementation(libs.play.services.code.scanner)
   // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
-  implementation(libs.androidx.camera.camera2)
-  implementation(libs.androidx.camera.core)
-  implementation(libs.androidx.camera.lifecycle)
-  implementation(libs.androidx.camera.view)
-  implementation("com.google.mlkit:barcode-scanning:17.3.0")
+  // implementation(libs.androidx.camera.camera2)
+  // implementation(libs.androidx.camera.core)
+  // implementation(libs.androidx.camera.lifecycle)
+  // implementation(libs.androidx.camera.view)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
@@ -128,10 +127,10 @@ abstract class CopyApkTask : DefaultTask() {
     @get:Input
     abstract val sourceFilePath: Property<String>
 
-    @get:Internal
+    @get:Input
     abstract val destDirPath1: Property<String>
 
-    @get:Internal
+    @get:Input
     abstract val destDirPath2: Property<String>
 
     @TaskAction
@@ -158,4 +157,3 @@ val copyApkTask = tasks.register<CopyApkTask>("copyApkTask") {
 tasks.matching { it.name == "assembleDebug" }.configureEach {
     finalizedBy(copyApkTask)
 }
-
