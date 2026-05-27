@@ -345,9 +345,11 @@ fun SimpleDateRangePickerDialog(
     onDismiss: () -> Unit,
     onDateRangeSelected: (Long, Long) -> Unit
 ) {
+    val safeStartDate = minOf(initialStartDate, initialEndDate)
+    val safeEndDate = maxOf(initialStartDate, initialEndDate)
     val dateRangePickerState = rememberDateRangePickerState(
-        initialSelectedStartDateMillis = initialStartDate,
-        initialSelectedEndDateMillis = initialEndDate
+        initialSelectedStartDateMillis = safeStartDate,
+        initialSelectedEndDateMillis = safeEndDate
     )
 
     DatePickerDialog(
@@ -431,7 +433,7 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = repair.inventoryNumber,
+                        text = "${repair.inventoryNumber}  -  $assetType",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
@@ -451,13 +453,6 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = assetType,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
                 }
             }
 

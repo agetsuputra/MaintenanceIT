@@ -9,6 +9,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -36,6 +37,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaintenanceScreen(
     maintenances: List<Maintenance>,
@@ -55,6 +57,7 @@ fun MaintenanceScreen(
     var showFilterDialog by remember { mutableStateOf(false) }
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
     var filterAllSelected by remember { mutableStateOf(true) }
+    var showDateRangePicker by remember { mutableStateOf(false) }
 
     val filteredMaintenances = remember(maintenances, assets, selectedCategories, filterAllSelected) {
         maintenances.filter { maint ->
@@ -76,9 +79,9 @@ fun MaintenanceScreen(
                 start = 16.dp,
                 end = 16.dp,
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
-                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 210.dp // High bottom padding to scroll past floating card
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp // Distance from lowest repair card to Catat Perawatan is 16.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Title (scrollable)
             item {
@@ -160,154 +163,94 @@ fun MaintenanceScreen(
             }
         }
 
-        // Floating Gradient Overlay for bottom floating Card
+        // Floating Gradient Overlay for bottom floating buttons
         com.example.ui.components.BottomFadeOverlay(
-            height = 220.dp,
+            height = 120.dp,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
 
-        // Floating Indigo/Blue Styled Range picker and action Card at bottom
         val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
         val cardBorderColor = com.example.ui.theme.AdaptiveColors.cardBorderColor(cardColor)
 
-        Card(
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
                 .padding(bottom = 16.dp)
                 .padding(horizontal = 16.dp)
                 .fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = cardColor),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, cardBorderColor)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    text = "Rentang Waktu Perawatan:",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+            // Left Button: Circular Date Range Picker (like hamburger menu style)
+            IconButton(
+                onClick = { showDateRangePicker = true },
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(cardColor, CircleShape)
+                    .border(1.dp, cardBorderColor, CircleShape)
+                    .testTag("btn_filter_start_date_maint")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Pilih Rentang Tanggal",
+                    tint = MaterialTheme.colorScheme.primary
                 )
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // Center Button: Wide "Catat Perawatan" (Styled like Searchbar, Centered, No Shadow)
+            Card(
+                onClick = onAddMaintClick,
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, cardBorderColor),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
+                    .testTag("btn_add_maintenance")
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .clickable {
-                                val cal = Calendar.getInstance().apply { timeInMillis = startDate }
-                                DatePickerDialog(
-                                    context,
-                                    { _, y, m, d ->
-                                        val selectedCal = Calendar.getInstance()
-                                        selectedCal.set(y, m, d, 0, 0, 0)
-                                        onStartDateChange(selectedCal.timeInMillis)
-                                    },
-                                    cal.get(Calendar.YEAR),
-                                    cal.get(Calendar.MONTH),
-                                    cal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }
-                            .padding(10.dp)
-                            .testTag("btn_filter_start_maint"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(6.dp))
-                            Text(format.format(Date(startDate)), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
-
-                    Text(" s.d ", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .clickable {
-                                val cal = Calendar.getInstance().apply { timeInMillis = endDate }
-                                DatePickerDialog(
-                                    context,
-                                    { _, y, m, d ->
-                                        val selectedCal = Calendar.getInstance()
-                                        selectedCal.set(y, m, d, 23, 59, 59)
-                                        onEndDateChange(selectedCal.timeInMillis)
-                                    },
-                                    cal.get(Calendar.YEAR),
-                                    cal.get(Calendar.MONTH),
-                                    cal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }
-                            .padding(10.dp)
-                            .testTag("btn_filter_end_maint"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(6.dp))
-                            Text(format.format(Date(endDate)), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = onAddMaintClick,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("btn_add_maintenance"),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Tambah Perawatan", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    OutlinedButton(
-                        onClick = onExportClick,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("btn_export_maintenances"),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
-                    ) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Export PDF", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Text(
+                        text = "Catat Perawatan",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
+
+            // Right Button: Export PDF (Circular like hamburger menu style)
+            IconButton(
+                onClick = onExportClick,
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(cardColor, CircleShape)
+                    .border(1.dp, cardBorderColor, CircleShape)
+                    .testTag("btn_export_maintenances")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Export PDF",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
+    }
+
+    if (showDateRangePicker) {
+        SimpleDateRangePickerDialog(
+            initialStartDate = startDate,
+            initialEndDate = endDate,
+            onDismiss = { showDateRangePicker = false },
+            onDateRangeSelected = { start: Long, end: Long ->
+                onStartDateChange(start)
+                onEndDateChange(end)
+            }
+        )
     }
 
     if (showFilterDialog) {
@@ -431,44 +374,40 @@ fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> 
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Inventaris: ${maintenance.inventoryNumber}",
-                        fontWeight = FontWeight.SemiBold,
+                        text = "${maintenance.inventoryNumber}  -  $assetType",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = "Kategori: $assetType",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = statusColor.copy(alpha = 0.12f),
-                ) {
-                    Text(
-                        text = maintenance.status,
-                        color = statusColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                Column(horizontalAlignment = Alignment.End) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = statusColor.copy(alpha = 0.12f),
+                    ) {
+                        Text(
+                            text = maintenance.status,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
             // Thin Horizontal Divider Line like main assets card style
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.padding(vertical = 4.dp),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
             )
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Second Row: Tindakan (on the bottom left) and Teknisi & Date (on the bottom right)
+            // Second Row: Tindakan (on the bottom left) and Teknisi (on the bottom right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -476,12 +415,6 @@ fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> 
             ) {
                 // Tindakan
                 Column(modifier = Modifier.weight(1.2f)) {
-                    Text(
-                        text = "Tindakan",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = maintenance.actionTaken,
                         style = MaterialTheme.typography.bodySmall,
@@ -498,16 +431,10 @@ fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> 
                     horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        text = "Teknisi",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
                         text = maintenance.technician,
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
