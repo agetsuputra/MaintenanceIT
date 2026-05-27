@@ -1737,7 +1737,7 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Inventaris: ${asset.inventoryNumber}",
+                        text = asset.inventoryNumber,
                         fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
@@ -1770,12 +1770,6 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
                 // Lokasi
                 Column {
                     Text(
-                        text = "Lokasi",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
                         text = asset.location,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
@@ -1785,12 +1779,6 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
 
                 // Kategori
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "Kategori",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = asset.type,
                         style = MaterialTheme.typography.bodySmall,
@@ -1854,10 +1842,12 @@ fun AddAssetForm(
     val themeBgColor = MaterialTheme.colorScheme.background
 
     val buttonsBottomOffset = if (WindowInsets.isImeVisible) {
-        16.dp
+        24.dp
     } else {
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
     }
+
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Box(
         modifier = Modifier
@@ -1867,8 +1857,8 @@ fun AddAssetForm(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                top = 24.dp,
-                bottom = buttonsBottomOffset + 70.dp,
+                top = statusBarHeight + 84.dp,
+                bottom = buttonsBottomOffset + 76.dp,
                 start = 16.dp,
                 end = 16.dp
             ),
@@ -2112,12 +2102,15 @@ fun AddAssetForm(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp)
+                .height(130.dp)
                 .align(Alignment.TopCenter)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            themeBgColor,
+                            themeBgColor.copy(alpha = 0.95f),
+                            themeBgColor.copy(alpha = 0.85f),
+                            themeBgColor.copy(alpha = 0.50f),
+                            themeBgColor.copy(alpha = 0.15f),
                             Color.Transparent
                         )
                     )
