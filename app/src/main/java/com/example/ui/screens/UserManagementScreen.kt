@@ -41,13 +41,7 @@ fun UserManagementScreen(
     var editingUser by remember { mutableStateOf<User?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    val isDark = isSystemInDarkTheme()
-    val bg = MaterialTheme.colorScheme.background
-    val cardColor = if (isDark) {
-        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.15f)
-    } else {
-        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.05f)
-    }
+    val cardColor = com.example.ui.theme.AdaptiveColors.cardColorMedium()
 
     Column(
         modifier = Modifier

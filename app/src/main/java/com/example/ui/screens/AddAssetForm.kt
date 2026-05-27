@@ -80,22 +80,9 @@ fun AddAssetForm(
     }
 
     val themeBgColor = MaterialTheme.colorScheme.background
-    val isDark = isSystemInDarkTheme()
-
-    val imeBottomPaddingForButtons = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-    val isKeyboardOpen = imeBottomPaddingForButtons > 0.dp
-    val buttonsBottomOffset = if (isKeyboardOpen) {
-        imeBottomPaddingForButtons + 16.dp
-    } else {
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
-    }
-
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-
-    val buttonsRowHeight = 66.dp
-    val buttonsFadeArea = 16.dp
-    val buttonsAnchor = buttonsBottomOffset + buttonsRowHeight
-    val computedButtonsTopDp = buttonsAnchor + buttonsFadeArea
+    val slotMetrics = com.example.util.rememberFloatingSlotMetrics(floatingElementHeight = 66.dp)
 
     Box(
         modifier = Modifier
@@ -349,66 +336,31 @@ fun AddAssetForm(
                 Spacer(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(buttonsAnchor + 16.dp)
+                        .height(slotMetrics.anchorHeight + 16.dp)
                 )
             }
         }
 
         // Top Gradient (starts from floating profile area and fades upward)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(statusBarHeight + 72.dp)
-                .align(Alignment.TopCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            themeBgColor.copy(alpha = 0.95f),
-                            themeBgColor.copy(alpha = 0.85f),
-                            themeBgColor.copy(alpha = 0.50f),
-                            themeBgColor.copy(alpha = 0.15f),
-                            Color.Transparent
-                        )
-                    )
-                )
+        com.example.ui.components.TopFadeOverlay(
+            height = statusBarHeight + 72.dp,
+            modifier = Modifier.align(Alignment.TopCenter)
         )
 
         // Bottom Gradient Overlay (anchored directly to the top edge of the action buttons)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(computedButtonsTopDp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            themeBgColor.copy(alpha = 0.15f),
-                            themeBgColor.copy(alpha = 0.50f),
-                            themeBgColor.copy(alpha = 0.85f),
-                            themeBgColor.copy(alpha = 0.95f),
-                            themeBgColor
-                        )
-                    )
-                )
+        com.example.ui.components.BottomFadeOverlay(
+            height = slotMetrics.anchorHeight + 16.dp,
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
 
-        val cardColor = if (isDark) {
-            androidx.compose.ui.graphics.lerp(themeBgColor, Color.Black, 0.25f)
-        } else {
-            androidx.compose.ui.graphics.lerp(themeBgColor, Color.Black, 0.07f)
-        }
-        val cardBorderColor = if (isDark) {
-            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.15f)
-        } else {
-            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.12f)
-        }
+        val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
+        val cardBorderColor = com.example.ui.theme.AdaptiveColors.cardBorderColor(cardColor)
 
         // Floating Row of cancel and save buttons following the keyboard
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = buttonsBottomOffset)
+                .padding(bottom = slotMetrics.bottomOffset)
                 .padding(horizontal = 16.dp)
                 .fillMaxWidth()
                 .background(cardColor, shape = RoundedCornerShape(16.dp))

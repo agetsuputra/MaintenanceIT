@@ -185,40 +185,14 @@ fun MaintenanceScreen(
         }
 
         // Floating Gradient Overlay for bottom floating Card
-        val themeBgColor = MaterialTheme.colorScheme.background
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            themeBgColor.copy(alpha = 0.15f),
-                            themeBgColor.copy(alpha = 0.50f),
-                            themeBgColor.copy(alpha = 0.85f),
-                            themeBgColor.copy(alpha = 0.95f),
-                            themeBgColor
-                        )
-                    )
-                )
+        com.example.ui.components.BottomFadeOverlay(
+            height = 220.dp,
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
 
         // Floating Indigo/Blue Styled Range picker and action Card at bottom
-        val isDark = isSystemInDarkTheme()
-        val bg = MaterialTheme.colorScheme.background
-        val cardColor = if (isDark) {
-            androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
-        } else {
-            androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
-        }
-
-        val cardBorderColor = if (isDark) {
-            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.15f)
-        } else {
-            androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.12f)
-        }
+        val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
+        val cardBorderColor = com.example.ui.theme.AdaptiveColors.cardBorderColor(cardColor)
 
         Card(
             modifier = Modifier
@@ -424,14 +398,7 @@ fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> 
         else -> Color(0xFF2E7D32) // Green (Selesai, Selesai & Terverifikasi)
     }
 
-    // Dynamic blending color that guarantees slightly darker background dynamically in both themes
-    val isDark = isSystemInDarkTheme()
-    val bg = MaterialTheme.colorScheme.background
-    val cardColor = if (isDark) {
-        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
-    } else {
-        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
-    }
+    val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
 
     Card(
         modifier = Modifier

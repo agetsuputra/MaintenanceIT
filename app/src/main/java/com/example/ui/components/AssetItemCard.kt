@@ -24,14 +24,7 @@ fun AssetItemCard(asset: Asset, onClick: () -> Unit) {
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    // Dynamic blending color that guarantees slightly darker background dynamically in both themes
-    val isDark = isSystemInDarkTheme()
-    val bg = MaterialTheme.colorScheme.background
-    val cardColor = if (isDark) {
-        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
-    } else {
-        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
-    }
+    val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
 
     Card(
         modifier = Modifier

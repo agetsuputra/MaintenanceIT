@@ -82,17 +82,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var userMenuExpanded by remember { mutableStateOf(false) }
     var hamburgerMenuExpanded by remember { mutableStateOf(false) }
 
-    val imeBottomPaddingForSearch = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-    val isDashboardKeyboardOpen = imeBottomPaddingForSearch > 0.dp
-    val searchBarBottomOffset = if (isDashboardKeyboardOpen) {
-        imeBottomPaddingForSearch + 16.dp
-    } else {
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
-    }
-
-    val searchBarHeight = 56.dp
-    val searchBarAnchor = searchBarBottomOffset + searchBarHeight
-    val computedSearchBarTopDp = searchBarAnchor + 16.dp
+    val slotMetrics = com.example.util.rememberFloatingSlotMetrics(floatingElementHeight = 56.dp)
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -341,7 +331,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 isFirebaseEnabled = viewModel.isFirebaseEnabled,
                                                 onAssetClick = { asset -> showingAssetDetail = asset },
                                                 searchQuery = searchQuery,
-                                                searchBarTopDp = searchBarAnchor
+                                                searchBarTopDp = slotMetrics.anchorHeight
                                             )
                                         }
                                         SubScreen.AddAsset -> {
@@ -482,47 +472,19 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
 
                 // --- 1.5 Custom Gradient Overlays ---
                 if (currentSubScreen == SubScreen.List) {
-                    val themeBgColor = MaterialTheme.colorScheme.background
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     
                     // Top Gradient Overlay (starts from floating profile area and fades upward)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(statusBarHeight + 72.dp)
-                            .align(Alignment.TopCenter)
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        themeBgColor.copy(alpha = 0.95f),
-                                        themeBgColor.copy(alpha = 0.85f),
-                                        themeBgColor.copy(alpha = 0.50f),
-                                        themeBgColor.copy(alpha = 0.15f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
+                    com.example.ui.components.TopFadeOverlay(
+                        height = statusBarHeight + 72.dp,
+                        modifier = Modifier.align(Alignment.TopCenter)
                     )
 
                     // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ONLY on Dashboard
                     if (currentTab == AppTab.Dashboard) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(computedSearchBarTopDp)
-                                .align(Alignment.BottomCenter)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            themeBgColor.copy(alpha = 0.15f),
-                                            themeBgColor.copy(alpha = 0.50f),
-                                            themeBgColor.copy(alpha = 0.85f),
-                                            themeBgColor.copy(alpha = 0.95f),
-                                            themeBgColor
-                                        )
-                                    )
-                                )
+                        com.example.ui.components.BottomFadeOverlay(
+                            height = slotMetrics.anchorHeight + 16.dp,
+                            modifier = Modifier.align(Alignment.BottomCenter)
                         )
                     }
                 }
@@ -576,20 +538,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 // 3. Floating Bottom Search Bar
                 val keyboardController = LocalSoftwareKeyboardController.current
 
-                // Dynamic blending color that guarantees slightly darker background dynamically in both themes
-                val isDark = isSystemInDarkTheme()
-                val bg = MaterialTheme.colorScheme.background
-                val cardColor = if (isDark) {
-                    androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.25f)
-                } else {
-                    androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.07f)
-                }
-
-                val cardBorderColor = if (isDark) {
-                    androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.15f)
-                } else {
-                    androidx.compose.ui.graphics.lerp(cardColor, Color.Black, 0.12f)
-                }
+                val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
+                val cardBorderColor = com.example.ui.theme.AdaptiveColors.cardBorderColor(cardColor)
 
                 AnimatedVisibility(
                     visible = (currentTab == AppTab.Dashboard && currentSubScreen == SubScreen.List),
@@ -597,7 +547,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     exit = fadeOut(),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = searchBarBottomOffset)
+                        .padding(bottom = slotMetrics.bottomOffset)
                         .padding(horizontal = 16.dp)
                 ) {
                     Card(
