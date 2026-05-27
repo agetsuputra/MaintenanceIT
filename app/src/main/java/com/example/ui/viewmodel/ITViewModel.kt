@@ -65,6 +65,12 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
         initialValue = emptyList()
     )
 
+    val allCategories: StateFlow<List<com.example.data.model.Category>> = repository.allCategories.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
     val allUpdateLogs: StateFlow<List<com.example.data.model.AssetUpdateLog>> = repository.allUpdateLogs.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -175,6 +181,61 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
             if (users.isEmpty()) {
                 repository.insertUser(com.example.data.model.User("sumayasa", "Sumayasa", "123456", "Kepala Unit IT", false))
                 repository.insertUser(com.example.data.model.User("deaget", "Deaget", "123456", "Staff IT", false))
+            }
+
+            // Seed default categories if empty
+            val categories = repository.allCategories.first()
+            if (categories.isEmpty()) {
+                val defaultCategories = listOf(
+                    com.example.data.model.Category(
+                        name = "Laptop",
+                        guidelines = listOf(
+                            "Cek kesehatan baterai (Battery Health)",
+                            "Perbarui sistem operasi & security patch",
+                            "Bersihkan kipas & ganti thermal paste if > 1 year old"
+                        ).joinToString("||~||")
+                    ),
+                    com.example.data.model.Category(
+                        name = "PC Desktop",
+                        guidelines = listOf(
+                            "Bersihkan debu casing luar dan dalam",
+                            "Cek suhu CPU idle dan load",
+                            "Verifikasi kestabilan tegangan PSU"
+                        ).joinToString("||~||")
+                    ),
+                    com.example.data.model.Category(
+                        name = "Printer",
+                        guidelines = listOf(
+                            "Lakukan print head nozzle check",
+                            "Bersihkan roller penarik kertas dari residu",
+                            "Ganti tinta/toner jika di bawah 20%"
+                        ).joinToString("||~||")
+                    ),
+                    com.example.data.model.Category(
+                        name = "Network Device",
+                        guidelines = listOf(
+                            "Backup file konfigurasi router/switch",
+                            "Cek status keaktifan port ethernet",
+                            "Verifikasi suhu perangkat dalam rack mount"
+                        ).joinToString("||~||")
+                    ),
+                    com.example.data.model.Category(
+                        name = "Server",
+                        guidelines = listOf(
+                            "Cek utilitas CPU dan sisa kapasitas RAM",
+                            "Verifikasi log error sistem operasi",
+                            "Pastikan temperatur server room tetap sejuk"
+                        ).joinToString("||~||")
+                    ),
+                    com.example.data.model.Category(
+                        name = "Lainnya",
+                        guidelines = listOf(
+                            "Periksa kondisi fisik perangkat",
+                            "Pastikan perkabelan rapi dan aman"
+                        ).joinToString("||~||")
+                    )
+                )
+                defaultCategories.forEach { repository.insertCategory(it) }
             }
         }
     }
@@ -319,6 +380,20 @@ class ITViewModel(private val repository: ITRepository) : ViewModel() {
     fun deleteUser(user: com.example.data.model.User, onComplete: () -> Unit) {
         viewModelScope.launch {
             repository.deleteUser(user)
+            onComplete()
+        }
+    }
+
+    fun saveCategory(category: com.example.data.model.Category, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            repository.insertCategory(category)
+            onComplete()
+        }
+    }
+
+    fun deleteCategory(category: com.example.data.model.Category, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            repository.deleteCategory(category)
             onComplete()
         }
     }

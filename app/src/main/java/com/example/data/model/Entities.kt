@@ -72,3 +72,10 @@ data class User(
     val role: String, // "Kepala Unit IT" or "Staff IT"
     val isBiometricEnabled: Boolean = false
 )
+
+@Entity(tableName = "categories")
+data class Category(
+    @PrimaryKey val name: String, // unique category name
+    val guidelines: String // Dynamic items joined by "||~||"
+)
+

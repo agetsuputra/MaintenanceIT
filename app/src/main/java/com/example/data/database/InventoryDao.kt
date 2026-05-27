@@ -86,4 +86,20 @@ interface InventoryDao {
 
     @Delete
     suspend fun deleteUser(user: User)
+
+    // --- Category Queries ---
+    @Query("SELECT * FROM categories ORDER BY name ASC")
+    fun getAllCategories(): Flow<List<com.example.data.model.Category>>
+
+    @Query("SELECT * FROM categories WHERE name = :catName LIMIT 1")
+    suspend fun getCategoryByName(catName: String): com.example.data.model.Category?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategory(category: com.example.data.model.Category)
+
+    @Update
+    suspend fun updateCategory(category: com.example.data.model.Category)
+
+    @Delete
+    suspend fun deleteCategory(category: com.example.data.model.Category)
 }

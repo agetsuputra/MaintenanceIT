@@ -444,4 +444,23 @@ class ITRepository(private val dao: InventoryDao) {
     suspend fun deleteUser(user: User) {
         dao.deleteUser(user)
     }
+
+    // --- Category Operations ---
+    val allCategories: Flow<List<com.example.data.model.Category>> = dao.getAllCategories()
+
+    suspend fun getCategoryByName(catName: String): com.example.data.model.Category? {
+        return dao.getCategoryByName(catName)
+    }
+
+    suspend fun insertCategory(category: com.example.data.model.Category) {
+        dao.insertCategory(category)
+    }
+
+    suspend fun updateCategory(category: com.example.data.model.Category) {
+        dao.updateCategory(category)
+    }
+
+    suspend fun deleteCategory(category: com.example.data.model.Category) {
+        dao.deleteCategory(category)
+    }
 }

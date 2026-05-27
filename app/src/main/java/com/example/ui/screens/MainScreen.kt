@@ -368,7 +368,8 @@ enum class AppTab {
     Dashboard,
     Perbaikan,
     Perawatan,
-    UserManagement
+    UserManagement,
+    CategoryManagement
 }
 
 enum class SubScreen {
@@ -750,6 +751,22 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                         }
                                     )
                                 }
+                                AppTab.CategoryManagement -> {
+                                    val categoryListState = viewModel.allCategories.collectAsStateWithLifecycle(emptyList())
+                                    CategoryManagementScreen(
+                                        categories = categoryListState.value,
+                                        onSaveCategory = { category ->
+                                            viewModel.saveCategory(category) {
+                                                Toast.makeText(context, "Kategori berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onDeleteCategory = { category ->
+                                            viewModel.deleteCategory(category) {
+                                                Toast.makeText(context, "Kategori berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -1034,7 +1051,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     icon = Icons.Default.Category,
                                     onClick = {
                                         userMenuExpanded = false
-                                        Toast.makeText(context, "Fitur Manajemen Kategori akan segera hadir", Toast.LENGTH_SHORT).show()
+                                        currentTab = AppTab.CategoryManagement
+                                        currentSubScreen = SubScreen.List
                                     },
                                     testTag = "menu_kategori"
                                 )
@@ -2763,6 +2781,11 @@ fun RepairsScreen(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp)
                             )
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
                             .clickable { startPicker.show() }
                             .padding(10.dp)
                             .testTag("btn_filter_start_date"),
@@ -2799,6 +2822,11 @@ fun RepairsScreen(
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(8.dp)
                             )
                             .clickable { endPicker.show() }
                             .padding(10.dp)
@@ -4069,7 +4097,7 @@ fun MaintenanceScreen(
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    text = "Rentang Waktu Laporan:",
+                    text = "Rentang Waktu Perawatan:",
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
@@ -4087,6 +4115,11 @@ fun MaintenanceScreen(
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(8.dp)
                             )
                             .clickable { startPicker.show() }
                             .padding(10.dp)
@@ -4108,6 +4141,11 @@ fun MaintenanceScreen(
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(8.dp)
                             )
                             .clickable { endPicker.show() }
                             .padding(10.dp)
@@ -4349,13 +4387,13 @@ fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> 
                     )
                 }
 
-                // Teknisi & Waktu
+                // Teknisi
                 Column(
                     modifier = Modifier.weight(0.8f),
                     horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        text = "Teknisi & Waktu",
+                        text = "Teknisi",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
@@ -4365,15 +4403,6 @@ fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> 
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(1.dp))
-                    Text(
-                        text = dateStr,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        fontSize = 10.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -5738,6 +5767,22 @@ fun LoginScreen(
         }
     }
 
+    var hasAutoTriggeredBiometric by remember { mutableStateOf(false) }
+    LaunchedEffect(usersState.value) {
+        if (!hasAutoTriggeredBiometric && usersState.value.isNotEmpty() && hasBiometricUser) {
+            hasAutoTriggeredBiometric = true
+            triggerBiometricLogin()
+        }
+    }
+
+    val isDark = isSystemInDarkTheme()
+    val bg = MaterialTheme.colorScheme.background
+    val cardColor = if (isDark) {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.15f)
+    } else {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.05f)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -5750,8 +5795,8 @@ fun LoginScreen(
                 .padding(16.dp)
                 .imePadding(),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            colors = CardDefaults.cardColors(containerColor = cardColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -5799,6 +5844,7 @@ fun LoginScreen(
                     },
                     label = { Text("Username") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().testTag("login_username_input"),
                     leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
                 )
@@ -5813,6 +5859,7 @@ fun LoginScreen(
                     },
                     label = { Text("PIN Keamanan (6 Digit)") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth().testTag("login_password_input"),
@@ -5932,6 +5979,14 @@ fun UserManagementScreen(
     var editingUser by remember { mutableStateOf<com.example.data.model.User?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
 
+    val isDark = isSystemInDarkTheme()
+    val bg = MaterialTheme.colorScheme.background
+    val cardColor = if (isDark) {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.15f)
+    } else {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.05f)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -5950,16 +6005,6 @@ fun UserManagementScreen(
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary
             )
-
-            Button(
-                onClick = { showAddDialog = true },
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Tambah User", fontSize = 12.sp)
-            }
         }
 
         Text(
@@ -5978,8 +6023,9 @@ fun UserManagementScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { editingUser = user },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                    colors = CardDefaults.cardColors(containerColor = cardColor),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = null
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -6041,21 +6087,26 @@ fun UserManagementScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Button(
-            onClick = onExportAllLogs,
+        OutlinedButton(
+            onClick = { showAddDialog = true },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .testTag("export_all_logs_button"),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF1B5E20),
-                contentColor = Color.White
+                .padding(vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.primary
             )
         ) {
-            Icon(Icons.Default.Share, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Ekspor Semua Log Sistem Lengkap (.XLS)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Tambah User / Username Baru", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            }
         }
     }
 
@@ -6287,4 +6338,324 @@ fun PopupMenuItem(
             )
         }
     }
+}
+
+@Composable
+fun CategoryManagementScreen(
+    categories: List<com.example.data.model.Category>,
+    onSaveCategory: (com.example.data.model.Category) -> Unit,
+    onDeleteCategory: (com.example.data.model.Category) -> Unit
+) {
+    var editingCategory by remember { mutableStateOf<com.example.data.model.Category?>(null) }
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val isDark = isSystemInDarkTheme()
+    val bg = MaterialTheme.colorScheme.background
+    val cardColor = if (isDark) {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.15f)
+    } else {
+        androidx.compose.ui.graphics.lerp(bg, Color.Black, 0.05f)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .testTag("category_management_screen")
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Manajemen Kategori",
+                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Text(
+            "Mengelola kategori perangkat dan panduan perawatan dinamis.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            items(categories, key = { it.name }) { category ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { editingCategory = category },
+                    colors = CardDefaults.cardColors(containerColor = cardColor),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = null
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = category.name,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            val itemsCount = if (category.guidelines.isBlank()) 0 else category.guidelines.split("||~||").size
+                            Text(
+                                text = "$itemsCount panduan perawatan",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { editingCategory = category }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Kategori", tint = MaterialTheme.colorScheme.primary)
+                            }
+                            if (category.name != "Laptop" && category.name != "PC Desktop" && category.name != "Printer" && category.name != "Server" && category.name != "Network Device" && category.name != "Lainnya") {
+                                IconButton(onClick = { onDeleteCategory(category) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Hapus Kategori", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = { showAddDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Tambah Kategori Baru", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            }
+        }
+    }
+
+    if (showAddDialog) {
+        CategoryEditorDialog(
+            category = null,
+            onDismiss = { showAddDialog = false },
+            onSave = { saved ->
+                onSaveCategory(saved)
+                showAddDialog = false
+            }
+        )
+    }
+
+    if (editingCategory != null) {
+        CategoryEditorDialog(
+            category = editingCategory,
+            onDismiss = { editingCategory = null },
+            onSave = { saved ->
+                onSaveCategory(saved)
+                editingCategory = null
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryEditorDialog(
+    category: com.example.data.model.Category?,
+    onDismiss: () -> Unit,
+    onSave: (com.example.data.model.Category) -> Unit
+) {
+    var name by remember { mutableStateOf(category?.name ?: "") }
+    val items = remember {
+        val loaded = category?.guidelines?.split("||~||")?.filter { it.isNotBlank() } ?: emptyList()
+        mutableStateListOf<String>().apply { 
+            if (loaded.isNotEmpty()) addAll(loaded) else add("") 
+        }
+    }
+    val context = LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (category == null) "Tambah Kategori Baru" else "Edit Kategori",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nama Kategori") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text(
+                    text = "Hal-hal yang harus diperhatikan (Dinamis):",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
+                // Limit height so dialog stays within screen bounds, with vertical scrolling
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(max = 240.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                        .padding(8.dp)
+                ) {
+                    val listState = rememberScrollState()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(listState),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items.forEachIndexed { index, value ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                // Up and Down reorder buttons
+                                Column(verticalArrangement = Arrangement.Center) {
+                                    IconButton(
+                                        onClick = {
+                                            if (index > 0) {
+                                                val temp = items[index]
+                                                items[index] = items[index - 1]
+                                                items[index - 1] = temp
+                                            }
+                                        },
+                                        enabled = index > 0,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowUp,
+                                            contentDescription = "Naikkan posisi",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            if (index < items.size - 1) {
+                                                val temp = items[index]
+                                                items[index] = items[index + 1]
+                                                items[index + 1] = temp
+                                            }
+                                        },
+                                        enabled = index < items.size - 1,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "Turunkan posisi",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = value,
+                                    onValueChange = { items[index] = it },
+                                    placeholder = { Text("Masukkan poin panduan...") },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                IconButton(
+                                    onClick = { 
+                                        if (items.size > 1) {
+                                            items.removeAt(index)
+                                        } else {
+                                            items[0] = ""
+                                        }
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Hapus panduan",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                TextButton(
+                    onClick = { items.add("") },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Tambah Panduan Baru", fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val filteredGuidelines = items.map { it.trim() }.filter { it.isNotBlank() }
+                    if (name.isBlank()) {
+                        Toast.makeText(context, "Harap isi nama kategori!", Toast.LENGTH_SHORT).show()
+                    } else if (filteredGuidelines.isEmpty()) {
+                        Toast.makeText(context, "Harap isi minimal 1 panduan / hal yang diperhatikan!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        onSave(
+                            com.example.data.model.Category(
+                                name = name.trim(),
+                                guidelines = filteredGuidelines.joinToString("||~||")
+                            )
+                        )
+                    }
+                },
+                enabled = name.isNotBlank()
+            ) {
+                Text("Simpan")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Batal")
+            }
+        }
+    )
 }
