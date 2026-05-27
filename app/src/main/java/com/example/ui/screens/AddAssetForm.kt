@@ -237,25 +237,27 @@ fun AddAssetForm(
             }
 
             item {
-                val calendar = Calendar.getInstance().apply { timeInMillis = acquisitionDateLong }
+                val calendar = remember(acquisitionDateLong) { Calendar.getInstance().apply { timeInMillis = acquisitionDateLong } }
                 val startYear = calendar.get(Calendar.YEAR)
                 val startMonth = calendar.get(Calendar.MONTH)
                 val startDay = calendar.get(Calendar.DAY_OF_MONTH)
 
-                val datePickerDialog = DatePickerDialog(
-                    context,
-                    { _, selectedYear, selectedMonth, selectedDay ->
-                        val selectedCal = Calendar.getInstance().apply {
-                            set(Calendar.YEAR, selectedYear)
-                            set(Calendar.MONTH, selectedMonth)
-                            set(Calendar.DAY_OF_MONTH, selectedDay)
-                        }
-                        acquisitionDateLong = selectedCal.timeInMillis
-                    },
-                    startYear,
-                    startMonth,
-                    startDay
-                )
+                val datePickerDialog = remember(context, startYear, startMonth, startDay) {
+                    DatePickerDialog(
+                        context,
+                        { _, selectedYear, selectedMonth, selectedDay ->
+                            val selectedCal = Calendar.getInstance().apply {
+                                set(Calendar.YEAR, selectedYear)
+                                set(Calendar.MONTH, selectedMonth)
+                                set(Calendar.DAY_OF_MONTH, selectedDay)
+                            }
+                            acquisitionDateLong = selectedCal.timeInMillis
+                        },
+                        startYear,
+                        startMonth,
+                        startDay
+                    )
+                }
 
                 Box(
                     modifier = Modifier

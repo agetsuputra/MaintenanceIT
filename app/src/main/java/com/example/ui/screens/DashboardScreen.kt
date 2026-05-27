@@ -57,8 +57,6 @@ fun DashboardScreen(
     val brokenAssets = remember(assets) { assets.count { it.status == "Rusak Permanen" } }
     val holdAssets = remember(assets) { assets.count { it.status == "Hold" || it.status == "Dalam Pengerjaan" } }
 
-    val dashboardBottomPadding = searchBarTopDp + 16.dp
-
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -67,7 +65,7 @@ fun DashboardScreen(
             start = 16.dp,
             end = 16.dp,
             top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp,
-            bottom = 16.dp
+            bottom = searchBarTopDp + 16.dp
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -232,14 +230,6 @@ fun DashboardScreen(
             items(filteredAssets, key = { it.inventoryNumber }) { asset ->
                 AssetItemCard(asset = asset, onClick = { onAssetClick(asset) })
             }
-        }
-
-        item {
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(dashboardBottomPadding)
-            )
         }
     }
 

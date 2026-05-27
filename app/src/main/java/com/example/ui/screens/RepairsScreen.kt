@@ -52,29 +52,33 @@ fun RepairsScreen(
     val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     // Filter Dialogs triggers
-    val startPicker = DatePickerDialog(
-        context,
-        { _, y, m, d ->
-            val cal = Calendar.getInstance()
-            cal.set(y, m, d, 0, 0, 0)
-            onStartDateChange(cal.timeInMillis)
-        },
-        Calendar.getInstance().get(Calendar.YEAR),
-        Calendar.getInstance().get(Calendar.MONTH),
-        Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-    )
+    val startPicker = remember(context) {
+        DatePickerDialog(
+            context,
+            { _, y, m, d ->
+                val cal = Calendar.getInstance()
+                cal.set(y, m, d, 0, 0, 0)
+                onStartDateChange(cal.timeInMillis)
+            },
+            Calendar.getInstance().get(Calendar.YEAR),
+            Calendar.getInstance().get(Calendar.MONTH),
+            Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+        )
+    }
 
-    val endPicker = DatePickerDialog(
-        context,
-        { _, y, m, d ->
-            val cal = Calendar.getInstance()
-            cal.set(y, m, d, 23, 59, 59)
-            onEndDateChange(cal.timeInMillis)
-        },
-        Calendar.getInstance().get(Calendar.YEAR),
-        Calendar.getInstance().get(Calendar.MONTH),
-        Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-    )
+    val endPicker = remember(context) {
+        DatePickerDialog(
+            context,
+            { _, y, m, d ->
+                val cal = Calendar.getInstance()
+                cal.set(y, m, d, 23, 59, 59)
+                onEndDateChange(cal.timeInMillis)
+            },
+            Calendar.getInstance().get(Calendar.YEAR),
+            Calendar.getInstance().get(Calendar.MONTH),
+            Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+        )
+    }
 
     // Category filter state for repairs list (matching dashboard filter)
     var showFilterDialog by remember { mutableStateOf(false) }
