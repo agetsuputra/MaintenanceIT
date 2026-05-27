@@ -495,7 +495,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 }
  
                 // 2. Floating Buttons (on top of everything else)
-                if (currentSubScreen == SubScreen.List) {
+                if (currentSubScreen == SubScreen.List || currentSubScreen == SubScreen.AddAsset) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -518,23 +518,41 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         ) {
                             Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
                         }
- 
-                        Box {
+
+                        if (currentSubScreen == SubScreen.AddAsset) {
                             FloatingActionButton(
-                                onClick = { userMenuExpanded = true },
+                                onClick = {
+                                    currentSubScreen = SubScreen.List
+                                    prefilledInventoryForAddAsset = null
+                                },
                                 shape = CircleShape,
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .testTag("btn_user_profile_floating"),
+                                    .testTag("btn_close_add_asset"),
                                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
                             ) {
-                                Text(
-                                    text = currentUsername.take(1).uppercase(),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
+                                Icon(Icons.Default.Close, contentDescription = "Kembali ke Dashboard")
+                            }
+                        } else {
+                            Box {
+                                FloatingActionButton(
+                                    onClick = { userMenuExpanded = true },
+                                    shape = CircleShape,
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .testTag("btn_user_profile_floating"),
+                                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
+                                ) {
+                                    Text(
+                                        text = currentUsername.take(1).uppercase(),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                }
                             }
                         }
                     }

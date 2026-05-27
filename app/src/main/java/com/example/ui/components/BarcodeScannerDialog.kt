@@ -73,7 +73,7 @@ fun BarcodeScannerDialog(
                         }
                     }
                     .addOnFailureListener { e ->
-                        scanError = "Pindai gagal atau dibatalkan."
+                        onDismiss()
                     }
             } catch (e: Exception) {
                 e.printStackTrace()

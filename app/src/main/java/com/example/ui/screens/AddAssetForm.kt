@@ -8,7 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
@@ -17,6 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +29,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,6 +37,7 @@ import com.example.data.model.Asset
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -44,6 +51,15 @@ fun AddAssetForm(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    val invFocus = remember { FocusRequester() }
+    val nameFocus = remember { FocusRequester() }
+    val locationFocus = remember { FocusRequester() }
+    val priceFocus = remember { FocusRequester() }
+    val descFocus = remember { FocusRequester() }
 
     val displayCategories = if (categories.isNotEmpty()) categories else listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
 
@@ -82,7 +98,7 @@ fun AddAssetForm(
     val themeBgColor = MaterialTheme.colorScheme.background
     val isDark = androidx.compose.foundation.isSystemInDarkTheme()
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val slotMetrics = com.example.util.rememberFloatingSlotMetrics(floatingElementHeight = 66.dp)
+    val slotMetrics = com.example.util.rememberFloatingSlotMetrics(floatingElementHeight = 56.dp)
 
     Box(
         modifier = Modifier
@@ -90,10 +106,11 @@ fun AddAssetForm(
             .testTag("add_asset_form")
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = statusBarHeight + 84.dp,
-                bottom = 16.dp,
+                bottom = slotMetrics.anchorHeight + 16.dp,
                 start = 16.dp,
                 end = 16.dp
             ),
@@ -143,8 +160,22 @@ fun AddAssetForm(
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                         disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                     ),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { nameFocus.requestFocus() }
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .focusRequester(invFocus)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                scope.launch {
+                                    listState.animateScrollToItem(1)
+                                }
+                            }
+                        }
                         .testTag("tf_inv_number"),
                     isError = assetList.any { it.inventoryNumber.equals(invNum, ignoreCase = true) }
                 )
@@ -171,8 +202,22 @@ fun AddAssetForm(
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                         disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                     ),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { locationFocus.requestFocus() }
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .focusRequester(nameFocus)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                scope.launch {
+                                    listState.animateScrollToItem(2)
+                                }
+                            }
+                        }
                         .testTag("tf_asset_name")
                 )
             }
@@ -198,6 +243,12 @@ fun AddAssetForm(
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth()
+                            .clickable {
+                                categoryExpanded = !categoryExpanded
+                                scope.launch {
+                                    listState.animateScrollToItem(3)
+                                }
+                            }
                             .testTag("tf_asset_type")
                     )
                     ExposedDropdownMenu(
@@ -230,8 +281,22 @@ fun AddAssetForm(
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                         disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                     ),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { priceFocus.requestFocus() }
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .focusRequester(locationFocus)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                scope.launch {
+                                    listState.animateScrollToItem(4)
+                                }
+                            }
+                        }
                         .testTag("tf_asset_location")
                 )
             }
@@ -262,7 +327,12 @@ fun AddAssetForm(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { datePickerDialog.show() }
+                        .clickable {
+                            scope.launch {
+                                listState.animateScrollToItem(5)
+                            }
+                            datePickerDialog.show()
+                        }
                 ) {
                     OutlinedTextField(
                         value = simpleDateFormat.format(java.util.Date(acquisitionDateLong)),
@@ -300,16 +370,29 @@ fun AddAssetForm(
                     },
                     label = { Text("Harga Beli (Rp) - Opsional") },
                     placeholder = { Text("Contoh: 1.250.000") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                         disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                     ),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { descFocus.requestFocus() }
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .focusRequester(priceFocus)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                scope.launch {
+                                    listState.animateScrollToItem(6)
+                                }
+                            }
+                        }
                         .testTag("tf_asset_purchase_price")
                 )
             }
@@ -327,18 +410,24 @@ fun AddAssetForm(
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                         disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                     ),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { keyboardController?.hide() }
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(110.dp)
+                        .focusRequester(descFocus)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                scope.launch {
+                                    listState.animateScrollToItem(7)
+                                }
+                            }
+                        }
                         .testTag("tf_asset_desc")
-                )
-            }
-
-            item {
-                Spacer(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(slotMetrics.anchorHeight + 16.dp)
                 )
             }
         }
@@ -350,51 +439,53 @@ fun AddAssetForm(
         )
 
         // Bottom Gradient Overlay (anchored directly to the top edge of the action buttons)
+        val bottomEdge = (slotMetrics.bottomOffset - 16.dp).coerceAtLeast(0.dp)
+        val gradientHeight = 56.dp + 16.dp
         com.example.ui.components.BottomFadeOverlay(
-            height = slotMetrics.anchorHeight + 16.dp,
-            modifier = Modifier.align(Alignment.BottomCenter)
+            height = gradientHeight,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = bottomEdge)
         )
 
-        val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
-        val cardBorderColor = com.example.ui.theme.AdaptiveColors.cardBorderColor(cardColor)
-
         // Floating Row of cancel and save buttons following the keyboard
+        // Hilangkan card induk (no background, no border, no padding/shape decoration card)
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = slotMetrics.bottomOffset)
                 .padding(horizontal = 16.dp)
                 .fillMaxWidth()
-                .background(cardColor, shape = RoundedCornerShape(16.dp))
-                .border(BorderStroke(1.dp, cardBorderColor), shape = RoundedCornerShape(16.dp))
-                .padding(8.dp),
+                .height(56.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(
+            val isValid = invNum.isNotBlank() && name.isNotBlank() && location.isNotBlank() &&
+                    assetList.none { it.inventoryNumber.equals(invNum, ignoreCase = true) }
+
+            // Tombol Batal: Berwarna solid non-transparan
+            Button(
                 onClick = {
                     keyboardController?.hide()
                     focusManager.clearFocus(force = true)
                     onCancel()
                 },
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
-                colors = ButtonDefaults.outlinedButtonColors(
+                border = BorderStroke(1.dp, if (isDark) Color(0xFF374151) else Color(0xFFD1D5DB)),
+                colors = ButtonDefaults.buttonColors(
                     containerColor = themeBgColor,
                     contentColor = MaterialTheme.colorScheme.primary
                 ),
-                elevation = null,
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
                 modifier = Modifier
                     .weight(1f)
-                    .height(50.dp)
+                    .height(56.dp)
                     .testTag("btn_cancel_asset")
             ) {
                 Text("Batal")
             }
 
-            val isValid = invNum.isNotBlank() && name.isNotBlank() && location.isNotBlank() &&
-                    assetList.none { it.inventoryNumber.equals(invNum, ignoreCase = true) }
-
+            // Tombol Simpan: Berwarna solid non-transparan
             Button(
                 onClick = {
                     keyboardController?.hide()
@@ -424,7 +515,7 @@ fun AddAssetForm(
                 elevation = null,
                 modifier = Modifier
                     .weight(1f)
-                    .height(50.dp)
+                    .height(56.dp)
                     .testTag("btn_save_asset")
             ) {
                 Text("Simpan")
