@@ -9,8 +9,10 @@ on:
       - 'v*'
   workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
 
-permissions:
-  contents: write # Crucial permission to allow file uploading/creation of releases
+permissions: write-all
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   build:
