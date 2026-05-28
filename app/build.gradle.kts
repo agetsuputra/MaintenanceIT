@@ -144,7 +144,8 @@ abstract class CopyApkTask : DefaultTask() {
             d2.mkdirs()
             apk.copyTo(File(d1, "app-debug.apk"), overwrite = true)
             apk.copyTo(File(d2, "app-debug.apk"), overwrite = true)
-            logger.quiet("SUCCESS: Copied APK to .build-outputs and project root directory.")
+            apk.copyTo(File(d2, "app-test-terbaru.apk"), overwrite = true)
+            logger.quiet("SUCCESS: Copied APK to .build-outputs, project root directory, and app-test-terbaru.apk.")
         }
     }
 }

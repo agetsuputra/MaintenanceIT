@@ -132,7 +132,7 @@ fun MaintenanceDetailDialog(
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            Box(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Box(modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 0.dp)) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -163,16 +163,17 @@ fun MaintenanceDetailDialog(
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 0.dp), thickness = 0.5.dp)
 
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        val bottomStickyHeight = 72.dp
-                        val safeBottomPadding = bottomStickyHeight + 16.dp
+                        val bottomStickyHeight = 56.dp
+                        val cardSpacing = 16.dp
+                        val safeBottomPadding = bottomStickyHeight + 20.dp + cardSpacing
 
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 16.dp, bottom = safeBottomPadding),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            contentPadding = PaddingValues(top = cardSpacing, bottom = safeBottomPadding),
+                            verticalArrangement = Arrangement.spacedBy(cardSpacing)
                         ) {
                             // 1. CARD IDENTITAS ASET
                             item {
@@ -581,7 +582,8 @@ fun MaintenanceDetailDialog(
 
                         // Bottom Gradient Overlay (anchored directly to the top edge of the floating buttons)
                         com.example.ui.components.BottomFadeOverlay(
-                            height = safeBottomPadding + 8.dp,
+                            height = bottomStickyHeight + 20.dp,
+                            color = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.align(Alignment.BottomCenter)
                         )
 
@@ -590,8 +592,8 @@ fun MaintenanceDetailDialog(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .fillMaxWidth()
-                                .height(56.dp)
-                                .padding(bottom = 0.dp) // Sits perfectly flush on the overlay anchor
+                                .height(bottomStickyHeight + 20.dp)
+                                .padding(bottom = 20.dp) // Sits perfectly flush on the overlay anchor
                         ) {
                             val bottomBarBgColor = AdaptiveColors.cardColorAccent()
                             val bottomBarBorderColor = AdaptiveColors.cardBorderColor(bottomBarBgColor)
