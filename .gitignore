@@ -19,4 +19,6 @@ debug.keystore
 
 !*.apk
 !.build-outputs/
+!/.build-outputs/app-debug.apk
+!/version.txt
 
