@@ -1,0 +1,4 @@
+# Keep line endings consistent for text files, prevent corruption for binary files
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
