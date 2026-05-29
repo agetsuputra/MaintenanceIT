@@ -49,6 +49,14 @@ jobs:
             echo "debug.keystore already exists."
           fi
 
+      - name: Create .env file for Secrets
+        run: |
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
+          echo "FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .env
+          echo "FIREBASE_APPLICATION_ID=${{ secrets.FIREBASE_APPLICATION_ID }}" >> .env
+          echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env
+        shell: bash
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace --info
 
