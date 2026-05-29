@@ -17,8 +17,7 @@ local.properties
 .env
 debug.keystore
 
-!*.apk
-!.build-outputs/
-!/.build-outputs/app-debug.apk
+*.apk
+.build-outputs/
 !/version.txt
 
