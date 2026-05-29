@@ -21,6 +21,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -78,6 +80,64 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var currentTab by remember { mutableStateOf(AppTab.Dashboard) }
     var currentSubScreen by remember { mutableStateOf(SubScreen.List) }
+
+    val startIndex = remember { (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % 3) }
+    val pagerState = rememberPagerState(
+        initialPage = startIndex,
+        pageCount = { Int.MAX_VALUE }
+    )
+
+    // Map circular page to AppTab
+    val pageToTab = remember {
+        { page: Int ->
+            when (page % 3) {
+                0 -> AppTab.Dashboard
+                1 -> AppTab.Perbaikan
+                2 -> AppTab.Perawatan
+                else -> AppTab.Dashboard
+            }
+        }
+    }
+
+    // Map AppTab to nearest circular page
+    val tabToNearestPage = remember {
+        { tab: AppTab, currentPage: Int ->
+            val currentTabOffset = currentPage % 3
+            val targetTabOffset = when (tab) {
+                AppTab.Dashboard -> 0
+                AppTab.Perbaikan -> 1
+                AppTab.Perawatan -> 2
+                else -> null
+            }
+            if (targetTabOffset != null) {
+                val diff = targetTabOffset - currentTabOffset
+                currentPage + diff
+            } else {
+                currentPage
+            }
+        }
+    }
+
+    // Sync from manual swipe (pager state change) to currentTab
+    LaunchedEffect(pagerState.currentPage) {
+        if (currentSubScreen == SubScreen.List) {
+            val calculatedTab = pageToTab(pagerState.currentPage)
+            if (currentTab != calculatedTab && calculatedTab in listOf(AppTab.Dashboard, AppTab.Perbaikan, AppTab.Perawatan)) {
+                currentTab = calculatedTab
+            }
+        }
+    }
+
+    // Sync from programmatic currentTab change (drawer, hamburger, direct navigation) to pager
+    LaunchedEffect(currentTab) {
+        if (currentSubScreen == SubScreen.List) {
+            val targetPage = tabToNearestPage(currentTab, pagerState.currentPage)
+            if (pagerState.currentPage != targetPage && (currentTab == AppTab.Dashboard || currentTab == AppTab.Perbaikan || currentTab == AppTab.Perawatan)) {
+                pagerState.animateScrollToPage(targetPage)
+            }
+        }
+    }
+
     var showSplash by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
     var userMenuExpanded by remember { mutableStateOf(false) }
@@ -322,20 +382,10 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            when (currentTab) {
-                                AppTab.Dashboard -> {
-                                    when (currentSubScreen) {
-                                        SubScreen.List -> {
-                                            DashboardScreen(
-                                                assets = assets,
-                                                repairs = repairs,
-                                                isFirebaseEnabled = viewModel.isFirebaseEnabled,
-                                                onAssetClick = { asset -> showingAssetDetail = asset },
-                                                searchQuery = searchQuery,
-                                                searchBarTopDp = slotMetrics.anchorHeight
-                                            )
-                                        }
-                                        SubScreen.AddAsset -> {
+                            if (currentSubScreen != SubScreen.List) {
+                                when (currentTab) {
+                                    AppTab.Dashboard -> {
+                                        if (currentSubScreen == SubScreen.AddAsset) {
                                             val categoryListState = viewModel.allCategories.collectAsStateWithLifecycle(emptyList())
                                             val categoriesNames = categoryListState.value.map { it.name }
                                             AddAssetForm(
@@ -357,32 +407,9 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 categories = categoriesNames
                                             )
                                         }
-                                        else -> {}
                                     }
-                                }
-                                AppTab.Perbaikan -> {
-                                    when (currentSubScreen) {
-                                        SubScreen.List -> {
-                                            RepairsScreen(
-                                                repairs = filteredRepairs,
-                                                assets = assets,
-                                                startDate = startDate,
-                                                endDate = endDate,
-                                                onStartDateChange = { viewModel.filterStartDate.value = it },
-                                                onEndDateChange = { viewModel.filterEndDate.value = it },
-                                                onRepairClick = { showingRepairDetail = it },
-                                                onAddRepairClick = { currentSubScreen = SubScreen.AddRepair },
-                                                onExportClick = {
-                                                    val f = viewModel.exportToPdf(context, "repairs")
-                                                    if (f != null) {
-                                                        viewModel.shareExportFile(context, f)
-                                                    } else {
-                                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                }
-                                            )
-                                        }
-                                        SubScreen.AddRepair -> {
+                                    AppTab.Perbaikan -> {
+                                        if (currentSubScreen == SubScreen.AddRepair) {
                                             AddRepairForm(
                                                 assetList = assets,
                                                 onSave = { repair ->
@@ -402,32 +429,9 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 currentUser = currentUsername
                                             )
                                         }
-                                        else -> {}
                                     }
-                                }
-                                AppTab.Perawatan -> {
-                                    when (currentSubScreen) {
-                                        SubScreen.List -> {
-                                            MaintenanceScreen(
-                                                maintenances = filteredMaintenances,
-                                                assets = assets,
-                                                startDate = startDate,
-                                                endDate = endDate,
-                                                onStartDateChange = { viewModel.filterStartDate.value = it },
-                                                onEndDateChange = { viewModel.filterEndDate.value = it },
-                                                onMaintClick = { showingMaintenanceDetail = it },
-                                                onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance },
-                                                onExportClick = {
-                                                    val f = viewModel.exportToPdf(context, "maintenances")
-                                                    if (f != null) {
-                                                        viewModel.shareExportFile(context, f)
-                                                    } else {
-                                                        Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                }
-                                            )
-                                        }
-                                        SubScreen.AddMaintenance -> {
+                                    AppTab.Perawatan -> {
+                                        if (currentSubScreen == SubScreen.AddMaintenance) {
                                             val categoryListState = viewModel.allCategories.collectAsStateWithLifecycle(emptyList())
                                             AddMaintenanceForm(
                                                 assetList = assets,
@@ -449,40 +453,103 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 currentUser = currentUsername
                                             )
                                         }
-                                        else -> {}
                                     }
+                                    else -> {}
                                 }
-                                AppTab.UserManagement -> {
-                                    val userListState = viewModel.allUsers.collectAsStateWithLifecycle(emptyList())
-                                    UserManagementScreen(
-                                        users = userListState.value,
-                                        onSaveUser = { user ->
-                                            viewModel.saveUser(user) {
-                                                Toast.makeText(context, "User berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                when (currentTab) {
+                                    AppTab.UserManagement -> {
+                                        val userListState = viewModel.allUsers.collectAsStateWithLifecycle(emptyList())
+                                        UserManagementScreen(
+                                            users = userListState.value,
+                                            onSaveUser = { user ->
+                                                viewModel.saveUser(user) {
+                                                    Toast.makeText(context, "User berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            onDeleteUser = { user ->
+                                                viewModel.deleteUser(user) {
+                                                    Toast.makeText(context, "User berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                                                }
                                             }
-                                        },
-                                        onDeleteUser = { user ->
-                                            viewModel.deleteUser(user) {
-                                                Toast.makeText(context, "User berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                                        )
+                                    }
+                                    AppTab.CategoryManagement -> {
+                                        val categoryListState = viewModel.allCategories.collectAsStateWithLifecycle(emptyList())
+                                        CategoryManagementScreen(
+                                            categories = categoryListState.value,
+                                            onSaveCategory = { category ->
+                                                viewModel.saveCategory(category) {
+                                                    Toast.makeText(context, "Kategori berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            onDeleteCategory = { category ->
+                                                viewModel.deleteCategory(category) {
+                                                    Toast.makeText(context, "Kategori berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        )
+                                    }
+                                    else -> {
+                                        HorizontalPager(
+                                            state = pagerState,
+                                            modifier = Modifier.fillMaxSize(),
+                                            userScrollEnabled = true
+                                        ) { page ->
+                                            when (page % 3) {
+                                                0 -> {
+                                                    DashboardScreen(
+                                                        assets = assets,
+                                                        repairs = repairs,
+                                                        isFirebaseEnabled = viewModel.isFirebaseEnabled,
+                                                        onAssetClick = { asset -> showingAssetDetail = asset },
+                                                        searchQuery = searchQuery,
+                                                        searchBarTopDp = slotMetrics.anchorHeight
+                                                    )
+                                                }
+                                                1 -> {
+                                                    RepairsScreen(
+                                                        repairs = filteredRepairs,
+                                                        assets = assets,
+                                                        startDate = startDate,
+                                                        endDate = endDate,
+                                                        onStartDateChange = { viewModel.filterStartDate.value = it },
+                                                        onEndDateChange = { viewModel.filterEndDate.value = it },
+                                                        onRepairClick = { showingRepairDetail = it },
+                                                        onAddRepairClick = { currentSubScreen = SubScreen.AddRepair },
+                                                        onExportClick = {
+                                                            val f = viewModel.exportToPdf(context, "repairs")
+                                                            if (f != null) {
+                                                                viewModel.shareExportFile(context, f)
+                                                            } else {
+                                                                Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                                2 -> {
+                                                    MaintenanceScreen(
+                                                        maintenances = filteredMaintenances,
+                                                        assets = assets,
+                                                        startDate = startDate,
+                                                        endDate = endDate,
+                                                        onStartDateChange = { viewModel.filterStartDate.value = it },
+                                                        onEndDateChange = { viewModel.filterEndDate.value = it },
+                                                        onMaintClick = { showingMaintenanceDetail = it },
+                                                        onAddMaintClick = { currentSubScreen = SubScreen.AddMaintenance },
+                                                        onExportClick = {
+                                                            val f = viewModel.exportToPdf(context, "maintenances")
+                                                            if (f != null) {
+                                                                viewModel.shareExportFile(context, f)
+                                                            } else {
+                                                                Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
-                                    )
-                                }
-                                AppTab.CategoryManagement -> {
-                                    val categoryListState = viewModel.allCategories.collectAsStateWithLifecycle(emptyList())
-                                    CategoryManagementScreen(
-                                        categories = categoryListState.value,
-                                        onSaveCategory = { category ->
-                                            viewModel.saveCategory(category) {
-                                                Toast.makeText(context, "Kategori berhasil disimpan!", Toast.LENGTH_SHORT).show()
-                                            }
-                                        },
-                                        onDeleteCategory = { category ->
-                                            viewModel.deleteCategory(category) {
-                                                Toast.makeText(context, "Kategori berhasil dihapus!", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    )
+                                    }
                                 }
                             }
                         }
