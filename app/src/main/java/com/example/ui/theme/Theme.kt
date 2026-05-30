@@ -16,14 +16,14 @@ private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF90CAF9),      // Soft Blue
     secondary = Color(0xFFA5D6A7),    // Soft Green
     tertiary = Color(0xFF81D4FA),     // Light Blue
-    background = Color(0xFF121212),
-    surface = Color(0xFF1E1E1E),
+    background = Color.Black,
+    surface = Color(0xFF1A1A1A),
     onPrimary = Color(0xFF0D47A1),
     onSecondary = Color(0xFF1B5E20),
     onTertiary = Color(0xFF006064),
     onBackground = Color(0xFFECEFF1),
     onSurface = Color(0xFFECEFF1),
-    surfaceVariant = Color(0xFF2C2C2C),
+    surfaceVariant = Color(0xFF1A1A1A),
     onSurfaceVariant = Color(0xFFB0BEC5),
     outline = Color(0xFF78909C)
 )
@@ -32,14 +32,14 @@ private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF0288D1),     // Primary Blue
     secondary = Color(0xFF2E7D32),   // Secondary Green
     tertiary = Color(0xFF0277BD),    // Accent Blue
-    background = Color(0xFFF5F7FA),  // Soft neutral background
-    surface = Color.White,
+    background = Color.White,
+    surface = Color(0xFFF1F3F5),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
     onBackground = Color(0xFF263238),
     onSurface = Color(0xFF263238),
-    surfaceVariant = Color(0xFFECEFF1),
+    surfaceVariant = Color(0xFFF1F3F5),
     onSurfaceVariant = Color(0xFF455A64),
     outline = Color(0xFF90A4AE)
 )
@@ -55,7 +55,20 @@ fun MyApplicationTheme(
     when {
       dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
         val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        val baseScheme = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        if (darkTheme) {
+            baseScheme.copy(
+                background = Color.Black,
+                surface = Color(0xFF1A1A1A),
+                surfaceVariant = Color(0xFF1A1A1A)
+            )
+        } else {
+            baseScheme.copy(
+                background = Color.White,
+                surface = Color(0xFFF1F3F5),
+                surfaceVariant = Color(0xFFF1F3F5)
+            )
+        }
       }
 
       darkTheme -> DarkColorScheme

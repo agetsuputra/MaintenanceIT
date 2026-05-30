@@ -1,21 +1,17 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -26,38 +22,40 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.Asset
 import com.example.data.model.Repair
 import com.example.ui.components.AssetItemCard
-import com.example.ui.components.StatCard
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun DashboardScreen(
     assets: List<Asset>,
     repairs: List<Repair>,
+    categories: List<com.example.data.model.Category>,
     isFirebaseEnabled: Boolean,
     onAssetClick: (Asset) -> Unit,
+    onStatusChange: (Asset, String) -> Unit,
     searchQuery: String,
     searchBarTopDp: Dp
 ) {
-    var showFilterDialog by remember { mutableStateOf(false) }
-    var selectedCategories by remember { mutableStateOf(setOf<String>()) }
-    var filterAllSelected by remember { mutableStateOf(true) }
+    val defaultCategoryNames = remember {
+        listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
+    }
 
-    val filteredAssets by remember(assets, searchQuery, selectedCategories, filterAllSelected) {
+    val categoryNames = remember(categories) {
+        if (categories.isEmpty()) defaultCategoryNames else categories.map { it.name }
+    }
+
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+
+    val filteredAssets by remember(assets, searchQuery, selectedCategory) {
         derivedStateOf {
             assets.filter { item ->
                 val matchesSearch = item.inventoryNumber.contains(searchQuery, ignoreCase = true) ||
                         item.name.contains(searchQuery, ignoreCase = true) ||
                         item.location.contains(searchQuery, ignoreCase = true)
-                val matchesCategory = filterAllSelected || selectedCategories.contains(item.type)
+                val matchesCategory = selectedCategory == null || item.type.equals(selectedCategory, ignoreCase = true)
                 matchesSearch && matchesCategory
             }
         }
     }
-
-    // Count statistics
-    val totalAssets = remember(assets) { assets.size }
-    val activeAssets = remember(assets) { assets.count { it.status == "Aktif" } }
-    val brokenAssets = remember(assets) { assets.count { it.status == "Rusak Permanen" } }
-    val holdAssets = remember(assets) { assets.count { it.status == "Hold" || it.status == "Dalam Pengerjaan" } }
 
     LazyColumn(
         modifier = Modifier
@@ -71,127 +69,74 @@ fun DashboardScreen(
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Welcoming card with statistics
+        // Redesigned Samsung One UI Clock style centered header
         item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                shape = RoundedCornerShape(24.dp),
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Dasbor Manajemen Perangkat",
-                            fontWeight = FontWeight.ExtraBold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(
-                                                    if (isFirebaseEnabled) Color(0xFF2E7D32).copy(alpha = 0.15f)
-                                                    else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)
-                                                )
-                                                .border(
-                                                    width = 1.dp,
-                                                    color = if (isFirebaseEnabled) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.25f),
-                                                    shape = RoundedCornerShape(8.dp)
-                                                )
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isFirebaseEnabled) Color(0xFF2E7D32) else Color.Red)
-                            )
-                            Text(
-                                text = if (isFirebaseEnabled) "Cloud Sync Aktif" else "Database Lokal",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isFirebaseEnabled) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // Grid stats
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        StatCard(
-                            label = "Total Aset",
-                            value = totalAssets.toString(),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f).aspectRatio(1f)
-                        )
-                        StatCard(
-                            label = "Aktif",
-                            value = activeAssets.toString(),
-                            color = Color(0xFF2E7D32),
-                            modifier = Modifier.weight(1f).aspectRatio(1f)
-                        )
-                        StatCard(
-                            label = "Rusak",
-                            value = brokenAssets.toString(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.weight(1f).aspectRatio(1f)
-                        )
-                        StatCard(
-                            label = "Hold",
-                            value = holdAssets.toString(),
-                            color = Color(0xFFEF6C00),
-                            modifier = Modifier.weight(1f).aspectRatio(1f)
-                        )
+                val activeCount = remember(assets, selectedCategory) {
+                    if (selectedCategory == null) {
+                        assets.count { it.status == "Aktif" }
+                    } else {
+                        assets.count { it.type.equals(selectedCategory, ignoreCase = true) && it.status == "Aktif" }
                     }
                 }
-            }
-        }
-
-        // Heading with Filter button
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                val activeHeaderText = if (selectedCategory == null) {
+                    "$activeCount Perangkat Aktif"
+                } else {
+                    "$activeCount $selectedCategory Aktif"
+                }
+                
                 Text(
-                    "Daftar Seluruh Perangkat (${filteredAssets.size})",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground
+                    text = activeHeaderText,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
                 )
                 
-                Row(
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                // Wrapping categories (like Sen, 1 Jun 06.45 style but dynamically wrapped list)
+                val categoryNamesWithSemua = remember(categoryNames) {
+                    listOf("Semua") + categoryNames
+                }
+                
+                FlowRow(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { showFilterDialog = true }
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.FilterList,
-                        contentDescription = "Filter",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "Filter",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    categoryNamesWithSemua.forEach { cat ->
+                        val isSelected = if (cat == "Semua") selectedCategory == null else selectedCategory == cat
+                        val textAlpha = if (isSelected) 1f else 0.5f
+                        val textWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        val textColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                        
+                        Text(
+                            text = cat,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                            fontWeight = textWeight,
+                            color = textColor.copy(alpha = textAlpha),
+                            modifier = Modifier
+                                .clickable {
+                                    if (cat == "Semua") {
+                                        selectedCategory = null
+                                    } else {
+                                        selectedCategory = if (selectedCategory == cat) null else cat
+                                    }
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
         }
@@ -230,86 +175,12 @@ fun DashboardScreen(
             }
         } else {
             items(filteredAssets, key = { it.inventoryNumber }) { asset ->
-                AssetItemCard(asset = asset, onClick = { onAssetClick(asset) })
+                AssetItemCard(
+                    asset = asset,
+                    onStatusChange = { newStatus -> onStatusChange(asset, newStatus) },
+                    onClick = { onAssetClick(asset) }
+                )
             }
         }
-    }
-
-    if (showFilterDialog) {
-        val availableCategories = listOf("Laptop", "PC Desktop", "Printer", "Network Device", "Server", "Lainnya")
-        AlertDialog(
-            onDismissRequest = { showFilterDialog = false },
-            title = { Text("Filter Kategori Aset", fontWeight = FontWeight.Bold) },
-            text = {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    filterAllSelected = !filterAllSelected
-                                    if (filterAllSelected) {
-                                        selectedCategories = emptySet()
-                                    }
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = filterAllSelected,
-                                onCheckedChange = { checked ->
-                                    filterAllSelected = checked
-                                    if (checked) {
-                                        selectedCategories = emptySet()
-                                    }
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Semua Kategori (All)")
-                        }
-                    }
-                    items(availableCategories) { cat ->
-                        val isChecked = !filterAllSelected && selectedCategories.contains(cat)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    val current = selectedCategories.toMutableSet()
-                                    if (current.contains(cat)) {
-                                        current.remove(cat)
-                                    } else {
-                                        current.add(cat)
-                                    }
-                                    selectedCategories = current
-                                    filterAllSelected = current.isEmpty()
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = isChecked,
-                                onCheckedChange = { checked ->
-                                    val current = selectedCategories.toMutableSet()
-                                    if (checked) {
-                                        current.add(cat)
-                                    } else {
-                                        current.remove(cat)
-                                    }
-                                    selectedCategories = current
-                                    filterAllSelected = current.isEmpty()
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(cat)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showFilterDialog = false }) {
-                    Text("Terapkan", fontWeight = FontWeight.Bold)
-                }
-            }
-        )
     }
 }

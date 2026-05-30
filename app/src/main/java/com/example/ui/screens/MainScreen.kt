@@ -138,7 +138,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
         }
     }
 
-    var showSplash by remember { mutableStateOf(true) }
+    var showSplash by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var userMenuExpanded by remember { mutableStateOf(false) }
     var hamburgerMenuExpanded by remember { mutableStateOf(false) }
@@ -155,12 +155,16 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     // Seed preview database if empty and trigger splash fadeout
     LaunchedEffect(Unit) {
         viewModel.seedSampleDataIfEmpty()
-        locationPermissionLauncher.launch(
-            arrayOf(
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION
+        try {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                )
             )
-        )
+        } catch (e: Throwable) {
+            e.printStackTrace()
+        }
         delay(1500)
         showSplash = false
     }
@@ -168,6 +172,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     // DB States
     val assets by viewModel.allAssets.collectAsStateWithLifecycle(emptyList())
     val repairs by viewModel.allRepairs.collectAsStateWithLifecycle(emptyList())
+    val categories by viewModel.allCategories.collectAsStateWithLifecycle(emptyList())
     val filteredRepairs by viewModel.filteredRepairs.collectAsStateWithLifecycle(emptyList())
     val filteredMaintenances by viewModel.filteredMaintenances.collectAsStateWithLifecycle(emptyList())
 
@@ -223,8 +228,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
         }
     }
 
-    var currentUsername by rememberSaveable { mutableStateOf("") }
-    var currentUserRole by rememberSaveable { mutableStateOf("") }
+    var currentUsername by rememberSaveable { mutableStateOf("Admin") }
+    var currentUserRole by rememberSaveable { mutableStateOf("Kepala Unit IT") }
 
     if (showSplash) {
         Box(
@@ -501,8 +506,12 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                     DashboardScreen(
                                                         assets = assets,
                                                         repairs = repairs,
+                                                        categories = categories,
                                                         isFirebaseEnabled = viewModel.isFirebaseEnabled,
                                                         onAssetClick = { asset -> showingAssetDetail = asset },
+                                                        onStatusChange = { asset, newStatus ->
+                                                            viewModel.saveAsset(asset.copy(status = newStatus)) {}
+                                                        },
                                                         searchQuery = searchQuery,
                                                         searchBarTopDp = slotMetrics.anchorHeight
                                                     )
