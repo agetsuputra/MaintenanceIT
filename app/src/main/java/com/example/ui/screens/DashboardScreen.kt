@@ -41,13 +41,15 @@ fun DashboardScreen(
     var selectedCategories by remember { mutableStateOf(setOf<String>()) }
     var filterAllSelected by remember { mutableStateOf(true) }
 
-    val filteredAssets = remember(assets, searchQuery, selectedCategories, filterAllSelected) {
-        assets.filter {
-            val matchesSearch = it.inventoryNumber.contains(searchQuery, ignoreCase = true) ||
-                    it.name.contains(searchQuery, ignoreCase = true) ||
-                    it.location.contains(searchQuery, ignoreCase = true)
-            val matchesCategory = filterAllSelected || selectedCategories.contains(it.type)
-            matchesSearch && matchesCategory
+    val filteredAssets by remember(assets, searchQuery, selectedCategories, filterAllSelected) {
+        derivedStateOf {
+            assets.filter { item ->
+                val matchesSearch = item.inventoryNumber.contains(searchQuery, ignoreCase = true) ||
+                        item.name.contains(searchQuery, ignoreCase = true) ||
+                        item.location.contains(searchQuery, ignoreCase = true)
+                val matchesCategory = filterAllSelected || selectedCategories.contains(item.type)
+                matchesSearch && matchesCategory
+            }
         }
     }
 

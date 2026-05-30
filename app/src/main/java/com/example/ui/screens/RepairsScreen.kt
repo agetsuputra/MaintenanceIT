@@ -392,9 +392,13 @@ fun SimpleDateRangePickerDialog(
 
 @Composable
 fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
-    val matchedAsset = assets.find { it.inventoryNumber == repair.inventoryNumber }
-    val assetName = matchedAsset?.name ?: "Perangkat Tidak Dikenal"
-    val assetType = matchedAsset?.type ?: "Lainnya"
+    val (assetName, assetType) = remember(repair.inventoryNumber, assets) {
+        val matchedAsset = assets.find { it.inventoryNumber == repair.inventoryNumber }
+        Pair(
+            matchedAsset?.name ?: "Perangkat Tidak Dikenal",
+            matchedAsset?.type ?: "Lainnya"
+        )
+    }
     
     val statusColor = when (repair.status) {
         "Hold" -> Color(0xFFEF6C00) // Orange

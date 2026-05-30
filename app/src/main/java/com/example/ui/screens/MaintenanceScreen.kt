@@ -334,9 +334,13 @@ fun MaintenanceScreen(
 
 @Composable
 fun MaintItemCard(maintenance: Maintenance, assets: List<Asset>, onClick: () -> Unit) {
-    val matchedAsset = assets.find { it.inventoryNumber == maintenance.inventoryNumber }
-    val assetName = matchedAsset?.name ?: "Perangkat Tidak Dikenal"
-    val assetType = matchedAsset?.type ?: "Lainnya"
+    val (assetName, assetType) = remember(maintenance.inventoryNumber, assets) {
+        val matchedAsset = assets.find { it.inventoryNumber == maintenance.inventoryNumber }
+        Pair(
+            matchedAsset?.name ?: "Perangkat Tidak Dikenal",
+            matchedAsset?.type ?: "Lainnya"
+        )
+    }
 
     val statusColor = when (maintenance.status) {
         "Dalam Pengerjaan" -> Color(0xFF1976D2) // Blue
