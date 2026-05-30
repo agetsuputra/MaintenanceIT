@@ -21,6 +21,7 @@ fun AssetItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(76.dp)
             .clickable { onClick() }
             .testTag("asset_card_${asset.inventoryNumber}"),
         shape = RoundedCornerShape(20.dp),
@@ -29,32 +30,45 @@ fun AssetItemCard(
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = asset.name,
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = asset.inventoryNumber,
-                    fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
                     text = asset.location,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
+            Spacer(modifier = Modifier.width(8.dp))
+            val statusColor = when (asset.status) {
+                "Aktif" -> MaterialTheme.colorScheme.primary
+                "Rusak Permanen" -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.secondary
+            }
+            Text(
+                text = asset.status,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = statusColor,
+                modifier = Modifier.align(Alignment.CenterVertically)
+            )
         }
     }
 }

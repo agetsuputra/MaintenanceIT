@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -142,6 +143,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
     var searchQuery by remember { mutableStateOf("") }
     var userMenuExpanded by remember { mutableStateOf(false) }
     var hamburgerMenuExpanded by remember { mutableStateOf(false) }
+    var isDashboardAtTop by remember { mutableStateOf(true) }
 
     val slotMetrics = com.example.util.rememberFloatingSlotMetrics(floatingElementHeight = 56.dp)
 
@@ -513,7 +515,9 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                             viewModel.saveAsset(asset.copy(status = newStatus)) {}
                                                         },
                                                         searchQuery = searchQuery,
-                                                        searchBarTopDp = slotMetrics.anchorHeight
+                                                        searchBarTopDp = slotMetrics.anchorHeight,
+                                                        onAddAssetClick = { currentSubScreen = SubScreen.AddAsset },
+                                                        onScrollAtTopChanged = { isDashboardAtTop = it }
                                                     )
                                                 }
                                                 1 -> {
@@ -598,19 +602,24 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        FloatingActionButton(
-                            onClick = {
-                                hamburgerMenuExpanded = true
-                            },
-                            shape = CircleShape,
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .testTag("btn_drawer_toggle"),
-                            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
-                        ) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
+                        val showHamburger = currentSubScreen != SubScreen.List || (pagerState.currentPage % 3 != 0) || !isDashboardAtTop
+                        if (showHamburger) {
+                            FloatingActionButton(
+                                onClick = {
+                                    hamburgerMenuExpanded = true
+                                },
+                                shape = CircleShape,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag("btn_drawer_toggle"),
+                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
+                            ) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.size(48.dp))
                         }
 
                         if (currentSubScreen == SubScreen.AddAsset) {
@@ -662,23 +671,28 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 Icon(Icons.Default.Close, contentDescription = "Kembali")
                             }
                         } else {
-                            Box {
-                                FloatingActionButton(
-                                    onClick = { userMenuExpanded = true },
-                                    shape = CircleShape,
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .testTag("btn_user_profile_floating"),
-                                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
-                                ) {
-                                    Text(
-                                        text = currentUsername.take(1).uppercase(),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
-                                    )
+                            val showProfile = currentSubScreen != SubScreen.List || (pagerState.currentPage % 3 != 0) || !isDashboardAtTop
+                            if (showProfile) {
+                                Box {
+                                    FloatingActionButton(
+                                        onClick = { userMenuExpanded = true },
+                                        shape = CircleShape,
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .testTag("btn_user_profile_floating"),
+                                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
+                                    ) {
+                                        Text(
+                                            text = currentUsername.take(1).uppercase(),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp
+                                        )
+                                    }
                                 }
+                            } else {
+                                Spacer(modifier = Modifier.size(48.dp))
                             }
                         }
                     }
@@ -711,6 +725,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 val addIconColor = if (isAddPressed) searchBarActiveTextColor else searchBarElementColor
                 val scanIconColor = if (isScanPressed) searchBarActiveTextColor else searchBarElementColor
  
+                val customBorderColor = if (isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF555555)
+
                 AnimatedVisibility(
                     visible = (currentTab == AppTab.Dashboard && currentSubScreen == SubScreen.List),
                     enter = fadeIn(),
@@ -720,39 +736,22 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         .padding(bottom = slotMetrics.bottomOffset)
                         .padding(horizontal = 16.dp)
                 ) {
-                    Card(
-                        shape = RoundedCornerShape(28.dp),
-                        colors = CardDefaults.cardColors(containerColor = cardColor),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        border = BorderStroke(1.dp, cardBorderColor),
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(56.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Row(
+                        // Sisi Kiri bawah: Searchbar flat memanjang dengan border tipis dinamis
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(cardColor, shape = RoundedCornerShape(28.dp))
+                                .border(BorderStroke(1.dp, customBorderColor), shape = RoundedCornerShape(28.dp)),
+                            contentAlignment = Alignment.CenterStart
                         ) {
-                            IconButton(
-                                onClick = {
-                                    currentSubScreen = SubScreen.AddAsset
-                                },
-                                interactionSource = addInteractionSource,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .testTag("btn_searchbar_add_asset")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Tambah Aset Baru",
-                                    tint = addIconColor
-                                )
-                            }
- 
-                            Spacer(modifier = Modifier.width(0.dp))
- 
                             TextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
@@ -794,12 +793,19 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     }
                                 ),
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp)
                                     .testTag("tf_search_asset")
                             )
- 
-                            IconButton(
-                                onClick = {
+                        }
+
+                        // Sisi Kanan bawah: Tombol Bulat Terpisah (FAB lingkaran kecil) untuk Scan QR dengan border tipis dinamis
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(cardColor, shape = CircleShape)
+                                .border(BorderStroke(1.dp, customBorderColor), shape = CircleShape)
+                                .clickable {
                                     showingBarcodeScanner = { code ->
                                         val trimmedCode = code.trim()
                                         if (trimmedCode.isNotEmpty()) {
@@ -812,18 +818,16 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                             }
                                         }
                                     }
-                                },
-                                interactionSource = scanInteractionSource,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .testTag("btn_dashboard_scan")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.QrCodeScanner,
-                                    contentDescription = "Scan QR/Barcode",
-                                    tint = scanIconColor
-                                )
-                            }
+                                }
+                                .testTag("btn_dashboard_scan"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.QrCodeScanner,
+                                contentDescription = "Scan QR/Barcode",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }

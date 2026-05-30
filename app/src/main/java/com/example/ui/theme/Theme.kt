@@ -32,14 +32,14 @@ private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF0288D1),     // Primary Blue
     secondary = Color(0xFF2E7D32),   // Secondary Green
     tertiary = Color(0xFF0277BD),    // Accent Blue
-    background = Color.White,
-    surface = Color(0xFFF1F3F5),
+    background = Color(0xFFF1F3F5),
+    surface = Color.White,
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
     onBackground = Color(0xFF263238),
     onSurface = Color(0xFF263238),
-    surfaceVariant = Color(0xFFF1F3F5),
+    surfaceVariant = Color.White,
     onSurfaceVariant = Color(0xFF455A64),
     outline = Color(0xFF90A4AE)
 )
@@ -64,9 +64,9 @@ fun MyApplicationTheme(
             )
         } else {
             baseScheme.copy(
-                background = Color.White,
-                surface = Color(0xFFF1F3F5),
-                surfaceVariant = Color(0xFFF1F3F5)
+                background = Color(0xFFF1F3F5),
+                surface = Color.White,
+                surfaceVariant = Color.White
             )
         }
       }
