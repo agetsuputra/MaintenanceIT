@@ -740,7 +740,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 }
 
                 AnimatedVisibility(
-                    visible = ((currentTab == AppTab.Dashboard || currentTab == AppTab.Perbaikan) && currentSubScreen == SubScreen.List),
+                    visible = ((currentTab == AppTab.Dashboard || currentTab == AppTab.Perbaikan || currentTab == AppTab.Perawatan) && currentSubScreen == SubScreen.List),
                     enter = fadeIn(),
                     exit = fadeOut(),
                     modifier = Modifier

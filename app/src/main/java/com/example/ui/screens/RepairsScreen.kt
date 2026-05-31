@@ -143,14 +143,16 @@ fun RepairsScreen(
         // Header height area representing the upper 1/3 of the clean screen
         val headerHeightDp = statusBarHeightDp + (cleanHeightDp / 3)
 
-        val scrollOffsetDp = if (scrollState.firstVisibleItemIndex > 0) {
-            headerHeightDp
-        } else {
-            with(density) { scrollState.firstVisibleItemScrollOffset.toDp() }
-        }
-
         // 10.dp is the offset calibration to align the 36.dp button's top edge to Garis 2 (Garis C)
         val boxControlDefaultTop = headerHeightDp - 10.dp
+        val maxScrollOffset = (boxControlDefaultTop - statusBarHeightDp).coerceAtLeast(0.dp)
+
+        val scrollOffsetDp = if (scrollState.firstVisibleItemIndex > 0) {
+            maxScrollOffset
+        } else {
+            with(density) { scrollState.firstVisibleItemScrollOffset.toDp() }
+        }.coerceAtMost(maxScrollOffset)
+
         val boxControlTopDp = (boxControlDefaultTop - scrollOffsetDp).coerceAtLeast(statusBarHeightDp)
 
         val totalScrollRangeDp = cleanHeightDp / 3
@@ -234,10 +236,12 @@ fun RepairsScreen(
                 } else {
                     (filteredRepairs.size * 76).dp + ((filteredRepairs.size - 1) * 14).dp
                 }
-                val requiredContentHeight = screenHeight + totalScrollRangeDp
-                val currentContentBeforeBottomSpacer = statusBarHeightDp + totalScrollRangeDp + 32.dp + estimatedItemsHeight
-                val minBottomSpacerRequired = (requiredContentHeight - currentContentBeforeBottomSpacer).coerceAtLeast(0.dp)
-                val bottomSpacerHeight = minBottomSpacerRequired.coerceAtLeast(searchBarTopDp + 14.dp) + keyboardHeight
+                val firstSpacerHeight = boxControlDefaultTop + 56.dp - 14.dp
+                val contentHeightBeforeBottomSpacer = firstSpacerHeight + estimatedItemsHeight
+                val targetTotalHeight = screenHeight + maxScrollOffset
+                val nativeBottomSpacer = targetTotalHeight - contentHeightBeforeBottomSpacer
+                val minBottomSpacer = (searchBarTopDp + 14.dp + keyboardHeight)
+                val bottomSpacerHeight = nativeBottomSpacer.coerceAtLeast(minBottomSpacer)
                 
                 Spacer(modifier = Modifier.height(bottomSpacerHeight))
             }
@@ -279,8 +283,8 @@ fun RepairsScreen(
                         .padding(horizontal = 24.dp)
                 ) {
                     val totalPerbaikan = filteredRepairs.size
-                    val namaKategori = if (selectedCategory == null) "Kerusakan" else selectedCategory!!
-                    val dynamicTitle = "$totalPerbaikan Perbaikan $namaKategori"
+                    val namaKategori = if (selectedCategory == null) "kerusakan" else selectedCategory!!.lowercase()
+                    val dynamicTitle = "$totalPerbaikan perbaikan $namaKategori"
 
                     Text(
                         text = dynamicTitle,
@@ -464,7 +468,7 @@ fun RepairsScreen(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Tambah Perbaikan Baru",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -725,10 +729,13 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
         )
     }
     
-    val statusColor = when (repair.status) {
-        "Hold" -> Color(0xFFEF6C00) // Orange
-        "Dalam Pengerjaan" -> Color(0xFF1976D2) // Blue
-        else -> Color(0xFF2E7D32) // Green
+    val cleanStatus = remember(repair.status) {
+        if (repair.status == "Selesai & Terverifikasi") "Terverifikasi" else repair.status
+    }
+
+    val statusColor = when (cleanStatus) {
+        "Terverifikasi", "Selesai" -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.secondary
     }
 
     Card(
@@ -763,14 +770,14 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = repair.status,
+                    text = cleanStatus,
                     color = statusColor,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Normal
                 )
             }
             Spacer(modifier = Modifier.height(2.dp))
-            // Row Bawah: repair.problem di kiri dan repair.technician di kanan
+            // Row Bawah: repair.problem di kiri (0.33f weight) dan repair.technician di kanan (0.67f weight)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -782,7 +789,7 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(0.33f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -791,7 +798,9 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(0.67f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
                 )
             }
         }

@@ -476,7 +476,7 @@ fun DashboardScreen(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Tambah Aset Baru",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
