@@ -554,6 +554,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                         onEndDateChange = { viewModel.filterEndDate.value = it },
                                                         onRepairClick = { showingRepairDetail = it },
                                                         onAddRepairClick = { currentSubScreen = SubScreen.AddRepair },
+                                                        searchBarTopDp = slotMetrics.anchorHeight,
                                                         onExportClick = {
                                                             val f = viewModel.exportToPdf(context, "repairs")
                                                             if (f != null) {
