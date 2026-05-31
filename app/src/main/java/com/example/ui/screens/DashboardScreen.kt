@@ -188,8 +188,8 @@ fun DashboardScreen(
                 }
             } else {
                 items(filteredAssets, key = { it.inventoryNumber }) { asset ->
-                    // Raised vertical padding between elements from 10.dp to 14.dp for more breathing space and layout elegance
-                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    // Optimized vertical padding between elements from 14.dp to 8.dp for more visual balance and compact elegance
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         AssetItemCard(
                             asset = asset,
                             onStatusChange = { newStatus -> onStatusChange(asset, newStatus) },
@@ -199,15 +199,6 @@ fun DashboardScreen(
                 }
             }
         }
-
-        // 1. Solid background cover for HP Status Bar to prevent visual leaks (0 to statusBarHeightDp)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(statusBarHeightDp)
-                .background(MaterialTheme.colorScheme.background)
-                .zIndex(10f)
-        )
 
         // Slots for dynamic category menu layout
         var visibleSlot2 by remember(categoryNames) {
@@ -225,6 +216,19 @@ fun DashboardScreen(
             categoryNames.filter { it != visibleSlot2 && it != visibleSlot3 }
         }
 
+        // Sticky Header Overlay (isolated from overscroll elastic pull and colored solid)
+        // Starts exactly at Garis 2 (headerHeightDp) and scrolls up capped at Garis 1 (statusBarHeightDp)
+        val stickyHeaderTopDp = (headerHeightDp - scrollOffsetDp).coerceAtLeast(statusBarHeightDp)
+
+        // 1. Opaque solid background cover for HP Status Bar and Header region to prevent visual leaks (0 to stickyHeaderTopDp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(stickyHeaderTopDp)
+                .background(MaterialTheme.colorScheme.background)
+                .zIndex(2f)
+        )
+
         // Header Area overlay with solid non-transparent background to cut off scrolling cards cleanly
         // Top offset moves up natively with scroll (-scrollOffsetDp)
         Box(
@@ -233,28 +237,29 @@ fun DashboardScreen(
                 .height(headerHeightDp)
                 .offset(y = -scrollOffsetDp)
                 .background(MaterialTheme.colorScheme.background)
+                .zIndex(3f)
         ) {
+            val activeCount = remember(assets, selectedCategory) {
+                if (selectedCategory == null) {
+                    assets.count { it.status == "Aktif" }
+                } else {
+                    assets.count { it.type.equals(selectedCategory, ignoreCase = true) && it.status == "Aktif" }
+                }
+            }
+            val activeHeaderText = if (selectedCategory == null) {
+                "$activeCount perangkat aktif"
+            } else {
+                "$activeCount ${selectedCategory?.lowercase()} aktif"
+            }
+
+            // Central Stats Header aligned vertically centered relative to Garis 3 (TopCenter + Offset)
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(cleanHeightDp / 3)
-                    .padding(top = statusBarHeightDp),
-                contentAlignment = Alignment.Center
+                    .align(Alignment.TopCenter)
+                    .offset(y = statusBarHeightDp + (cleanHeightDp / 6f) - 24.dp)
             ) {
-                // Precise stats title text centered vertically and horizontally relative to Garis 3
                 Text(
-                    text = remember(assets, selectedCategory) {
-                        val activeCount = if (selectedCategory == null) {
-                            assets.count { it.status == "Aktif" }
-                        } else {
-                            assets.count { it.type.equals(selectedCategory, ignoreCase = true) && it.status == "Aktif" }
-                        }
-                        if (selectedCategory == null) {
-                            "$activeCount perangkat aktif"
-                        } else {
-                            "$activeCount ${selectedCategory?.lowercase()} aktif"
-                        }
-                    },
+                    text = activeHeaderText,
                     fontFamily = FontFamily.Default,
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontSize = 32.sp,
@@ -262,19 +267,25 @@ fun DashboardScreen(
                     ),
                     color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.align(Alignment.Center)
+                    modifier = Modifier.graphicsLayer { alpha = step1Alpha }
                 )
+            }
 
-                // Rapatkan jarak vertikal antara judul statistik utama dengan baris kategori ini secara intensif (y = 26.dp below Center)
+            // Categories list and interactive menu centered 26.dp below Center of Garis 3
+            var categoryMenuExpanded by remember { mutableStateOf(false) }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = statusBarHeightDp + (cleanHeightDp / 6f) + 26.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+            ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .offset(y = 26.dp)
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .testTag("row_categories")
+                    modifier = Modifier.testTag("row_categories")
                 ) {
                     visibleItems.forEachIndexed { index, cat ->
                         val isSelected = if (cat == "Semua") selectedCategory == null else selectedCategory == cat
@@ -296,7 +307,6 @@ fun DashboardScreen(
                                 .padding(vertical = 4.dp)
                         )
 
-                        // Bullet point separator as a completely standalone and distinct Text view
                         if (index < visibleItems.lastIndex) {
                             Text(
                                 text = "•",
@@ -323,48 +333,62 @@ fun DashboardScreen(
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
 
-                    // Expansion '•••' button with dynamic positioning switch rules
-                    var categoryMenuExpanded by remember { mutableStateOf(false) }
+                    // Expansion clickable indicator
+                    Text(
+                        text = if (categoryMenuExpanded) "▲" else "•••",
+                        fontFamily = FontFamily.Default,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraLight
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable { categoryMenuExpanded = !categoryMenuExpanded }
+                            .padding(vertical = 4.dp, horizontal = 4.dp)
+                            .testTag("btn_expand_categories")
+                    )
+                }
 
-                    Box {
-                        Text(
-                            text = "•••",
-                            fontFamily = FontFamily.Default,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.ExtraLight
-                            ),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .clickable { categoryMenuExpanded = true }
-                                .padding(vertical = 4.dp, horizontal = 4.dp)
-                                .testTag("btn_expand_categories")
-                        )
+                // Inline expansion of remaining categories
+                if (categoryMenuExpanded) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        hiddenCategories.forEachIndexed { idx, cat ->
+                            val isSelected = selectedCategory == cat
+                            val textWeight = if (isSelected) FontWeight.Medium else FontWeight.ExtraLight
+                            val textColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
 
-                        DropdownMenu(
-                            expanded = categoryMenuExpanded,
-                            onDismissRequest = { categoryMenuExpanded = false },
-                            modifier = Modifier
-                                .width(180.dp)
-                                .background(MaterialTheme.colorScheme.surface)
-                        ) {
-                            hiddenCategories.forEach { cat ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = cat,
-                                            fontFamily = FontFamily.Default,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.Normal
-                                        )
-                                    },
-                                    onClick = {
-                                        categoryMenuExpanded = false
-                                        // Switch position logic: swap chosen hidden category into slot 2
+                            Text(
+                                text = cat,
+                                fontFamily = FontFamily.Default,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = textWeight
+                                ),
+                                color = textColor,
+                                modifier = Modifier
+                                    .clickable {
                                         visibleSlot2 = cat
                                         selectedCategory = cat
                                     }
-                                );
+                                    .padding(vertical = 4.dp)
+                            )
+
+                            if (idx < hiddenCategories.lastIndex) {
+                                Text(
+                                    text = "•",
+                                    fontFamily = FontFamily.Default,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraLight
+                                    ),
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
                             }
                         }
                     }
@@ -372,19 +396,16 @@ fun DashboardScreen(
             }
         }
 
-        // Sticky Header Overlay (isolated from overscroll elastic pull and colored solid)
-        // Starts exactly at Garis 2 (headerHeightDp) and scrolls up capped at Garis 1 (statusBarHeightDp)
-        val stickyHeaderTopDp = (headerHeightDp - scrollOffsetDp).coerceAtLeast(statusBarHeightDp)
-        
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
                 .offset(y = stickyHeaderTopDp)
                 .background(MaterialTheme.colorScheme.background)
-                .testTag("control_action_row"),
+                .testTag("control_action_row")
+                .zIndex(4f),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top // Aligns all action touch areas to touch Garis 2 perfectly
+            verticalAlignment = Alignment.CenterVertically
         ) {
             val collapsedTitle = if (selectedCategory == null) "Perangkat" else selectedCategory!!
             
@@ -397,16 +418,16 @@ fun DashboardScreen(
                 ),
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
-                    .align(Alignment.CenterVertically)
+                    .graphicsLayer { alpha = step2Alpha }
                     .padding(start = 36.dp)
             )
 
-            // Right side: Quick actions with top alignment so top edge matches Garis 2 exactly
+            // Right side: Quick actions aligned CenterVertically to match high design layout
             Row(
                 modifier = Modifier
-                    .align(Alignment.Top)
+                    .align(Alignment.CenterVertically)
                     .padding(end = 16.dp),
-                verticalAlignment = Alignment.Top,
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 IconButton(

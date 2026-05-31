@@ -597,12 +597,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 if (currentSubScreen == SubScreen.List) {
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     
-                    // Top Gradient Overlay (starts from floating profile area and fades upward)
-                    com.example.ui.components.TopFadeOverlay(
-                        height = statusBarHeight + 76.dp,
-                        modifier = Modifier.align(Alignment.TopCenter)
-                    )
- 
                     // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ONLY on Dashboard
                     if (currentTab == AppTab.Dashboard) {
                         val bottomEdge = (slotMetrics.bottomOffset - 16.dp).coerceAtLeast(0.dp)
