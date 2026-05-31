@@ -50,6 +50,8 @@ import com.example.data.model.Asset
 import com.example.data.model.Repair
 import com.example.ui.components.AssetItemCard
 
+private const val SHOW_DEBUG_LINES = true
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
@@ -149,6 +151,10 @@ fun DashboardScreen(
             // Spacer to reserve exact vertical height for the action bar
             item {
                 Spacer(modifier = Modifier.height(56.dp))
+            }
+            // Consistently matches the card spacing of vertical = 8.dp (adding extra 8.dp to standard first padding of 8.dp equals 16.dp total visual gap)
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             // Empty state or elements list
@@ -252,11 +258,13 @@ fun DashboardScreen(
                 "$activeCount ${selectedCategory?.lowercase()} aktif"
             }
 
-            // Central Stats Header aligned vertically centered relative to Garis 3 (TopCenter + Offset)
+            // Central Stats Header aligned vertically centered relative to Garis 3 (exactly center of upper room)
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = statusBarHeightDp + (cleanHeightDp / 6f) - 24.dp)
+                    .fillMaxWidth()
+                    .height(cleanHeightDp / 3)
+                    .offset(y = statusBarHeightDp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = activeHeaderText,
@@ -271,16 +279,17 @@ fun DashboardScreen(
                 )
             }
 
-            // Categories list and interactive menu centered 26.dp below Center of Garis 3
+            // Categories list and interactive menu centered 20.dp below Center of Garis 3
             var categoryMenuExpanded by remember { mutableStateOf(false) }
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(y = statusBarHeightDp + (cleanHeightDp / 6f) + 26.dp)
+                    .offset(y = statusBarHeightDp + (cleanHeightDp / 6f) + 20.dp) // tighter and more compact gap below header text
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
+                    .graphicsLayer { alpha = step1Alpha } // entire subheader (including Row & FlowRow) fades out dynamically
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
@@ -374,8 +383,10 @@ fun DashboardScreen(
                                     .clickable {
                                         visibleSlot2 = cat
                                         selectedCategory = cat
+                                        categoryMenuExpanded = false // auto-closes instantly when selected
                                     }
                                     .padding(vertical = 4.dp)
+                                    .align(Alignment.CenterVertically) // align categories centered aligned in FlowRow line
                             )
 
                             if (idx < hiddenCategories.lastIndex) {
@@ -387,7 +398,9 @@ fun DashboardScreen(
                                         fontWeight = FontWeight.ExtraLight
                                     ),
                                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                    modifier = Modifier
+                                        .padding(horizontal = 4.dp)
+                                        .align(Alignment.CenterVertically) // center alignment for bullet separator
                                 )
                             }
                         }
@@ -618,36 +631,38 @@ fun DashboardScreen(
             }
         }
 
-        // Temporary semi-transparent red guideline overlays for visual alignment precision
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(100f)
-        ) {
-            // Garis 1 (Status Bar bottom edge boundary)
+        if (SHOW_DEBUG_LINES) {
+            // Temporary semi-transparent red guideline overlays for visual alignment precision
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(0.5.dp)
-                    .offset(y = statusBarHeightDp)
-                    .background(Color.Red.copy(alpha = 0.5f))
-            )
-            // Garis 2 (Garis 1/3 Atas of screen height area)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(0.5.dp)
-                    .offset(y = headerHeightDp)
-                    .background(Color.Red.copy(alpha = 0.5f))
-            )
-            // Garis 3 (Garis Tengah Header, exactly vertical center of clean status bar space and 1/3 region)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(0.5.dp)
-                    .offset(y = statusBarHeightDp + (cleanHeightDp / 6f))
-                    .background(Color.Red.copy(alpha = 0.5f))
-            )
+                    .fillMaxSize()
+                    .zIndex(100f)
+            ) {
+                // Garis 1 (Status Bar bottom edge boundary)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .offset(y = statusBarHeightDp)
+                        .background(Color.Red.copy(alpha = 0.5f))
+                )
+                // Garis 2 (Garis 1/3 Atas of screen height area)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .offset(y = headerHeightDp)
+                        .background(Color.Red.copy(alpha = 0.5f))
+                )
+                // Garis 3 (Garis Tengah Header, exactly vertical center of clean status bar space and 1/3 region)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .offset(y = statusBarHeightDp + (cleanHeightDp / 6f))
+                        .background(Color.Red.copy(alpha = 0.5f))
+                )
+            }
         }
     }
 }
