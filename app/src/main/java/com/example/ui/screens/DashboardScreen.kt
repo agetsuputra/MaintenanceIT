@@ -151,6 +151,10 @@ fun DashboardScreen(
             with(density) { scrollState.firstVisibleItemScrollOffset.toDp() }
         }
 
+        // 10.dp is the offset calibration to align the 36.dp button's top edge to Garis 2 (Garis C)
+        val boxControlDefaultTop = headerHeightDp - 10.dp
+        val boxControlTopDp = (boxControlDefaultTop - scrollOffsetDp).coerceAtLeast(statusBarHeightDp)
+
         val totalScrollRangeDp = cleanHeightDp / 3
         val progress = if (totalScrollRangeDp > 0.dp) {
             (scrollOffsetDp / totalScrollRangeDp).coerceIn(0f, 1f)
@@ -180,14 +184,13 @@ fun DashboardScreen(
                 top = 0.dp,
                 bottom = 0.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Spacer to reserve exact vertical height for the header area and action bar (consolidated as a single item to prevent extra spacing from verticalArrangement)
+            // Spacer height is dynamically calculated to match the bottom of Box Kontrol at default scroll.
+            // Subtracting the 14.dp spacing added by verticalArrangement guarantees the first Card
+            // starts perfectly aligned with the bottom of Box Kontrol with no gap!
             item {
-                Column {
-                    Spacer(modifier = Modifier.height(headerHeightDp))
-                    Spacer(modifier = Modifier.height(56.dp))
-                }
+                Spacer(modifier = Modifier.height(boxControlDefaultTop + 56.dp - 14.dp))
             }
 
             // Empty state or elements list
@@ -238,9 +241,10 @@ fun DashboardScreen(
                 }
             }
 
-            // Dynamic bottom Spacer tracking system/IME insets to ensure the bottom card remains 8.dp above the searchbar
+            // Dynamic bottom Spacer tracking system/IME insets to ensure the bottom card remains 14.dp above the searchbar
             item {
-                Spacer(modifier = Modifier.height(searchBarTopDp + 8.dp))
+                val keyboardHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+                Spacer(modifier = Modifier.height(searchBarTopDp + 14.dp + keyboardHeight))
             }
         }
 
@@ -430,16 +434,15 @@ fun DashboardScreen(
             }
         }
 
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .offset(y = headerHeightDp) // Fixed to Upper Line 1/3 (Garis C)
+                .offset(y = boxControlTopDp)
                 .background(MaterialTheme.colorScheme.background)
                 .testTag("control_action_row")
                 .zIndex(4f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top // Tepi paling atas menyentuh Garis C
+            contentAlignment = Alignment.CenterStart
         ) {
             val collapsedTitle = if (selectedCategory == null) "Perangkat" else selectedCategory!!
             
@@ -453,15 +456,16 @@ fun DashboardScreen(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .graphicsLayer { alpha = step2Alpha }
-                    .padding(start = 36.dp, top = 0.dp) // Removed top padding
+                    .padding(start = 36.dp)
+                    .align(Alignment.CenterStart)
             )
 
-            // Right side: Quick actions with top alignment so top edge matches Garis C exactly
+            // Right side: Quick actions aligned CenterVertically to match high design layout
             Row(
                 modifier = Modifier
-                    .align(Alignment.Top)
-                    .padding(end = 16.dp, top = 0.dp), // Removed top padding
-                verticalAlignment = Alignment.Top,
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 IconButton(
@@ -576,6 +580,7 @@ fun DashboardScreen(
                             onClick = {
                                 menuExpanded = false
                                 selectedCategory = null
+                                categoryMenuExpanded = false
                             },
                             leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(18.dp)) }
                         )
