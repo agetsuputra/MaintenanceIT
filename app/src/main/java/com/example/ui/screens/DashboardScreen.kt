@@ -81,6 +81,42 @@ fun DashboardScreen(
     }
 
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var categoryMenuExpanded by remember { mutableStateOf(false) }
+
+    // Slots for dynamic category menu layout
+    var visibleSlot2 by remember(categoryNames) {
+        mutableStateOf(categoryNames.getOrNull(0) ?: "Laptop")
+    }
+    var visibleSlot3 by remember(categoryNames) {
+        mutableStateOf(categoryNames.getOrNull(1) ?: "PC Desktop")
+    }
+
+    val visibleItems = remember(visibleSlot2, visibleSlot3) {
+        listOf("Semua", visibleSlot2, visibleSlot3)
+    }
+
+    val hiddenCategories = remember(categoryNames, visibleSlot2, visibleSlot3) {
+        categoryNames.filter { it != visibleSlot2 && it != visibleSlot3 }
+    }
+
+    val onCategoryClick = { cat: String ->
+        if (cat == "Semua") {
+            selectedCategory = null
+            categoryMenuExpanded = false
+        } else {
+            if (categoryMenuExpanded) {
+                if (cat == visibleSlot3) {
+                    val temp = visibleSlot2
+                    visibleSlot2 = visibleSlot3
+                    visibleSlot3 = temp
+                } else if (cat != visibleSlot2) {
+                    visibleSlot2 = cat
+                }
+            }
+            selectedCategory = cat
+            categoryMenuExpanded = false
+        }
+    }
 
     val filteredAssets by remember(assets, searchQuery, selectedCategory) {
         derivedStateOf {
@@ -141,20 +177,17 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .testTag("dashboard_column"),
             contentPadding = PaddingValues(
-                bottom = searchBarTopDp + 24.dp
-            )
+                top = 0.dp,
+                bottom = 0.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Spacer to reserve exact vertical height for the header area
+            // Spacer to reserve exact vertical height for the header area and action bar (consolidated as a single item to prevent extra spacing from verticalArrangement)
             item {
-                Spacer(modifier = Modifier.height(headerHeightDp))
-            }
-            // Spacer to reserve exact vertical height for the action bar
-            item {
-                Spacer(modifier = Modifier.height(56.dp))
-            }
-            // Consistently matches the card spacing of vertical = 8.dp (adding extra 8.dp to standard first padding of 8.dp equals 16.dp total visual gap)
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
+                Column {
+                    Spacer(modifier = Modifier.height(headerHeightDp))
+                    Spacer(modifier = Modifier.height(56.dp))
+                }
             }
 
             // Empty state or elements list
@@ -194,8 +227,8 @@ fun DashboardScreen(
                 }
             } else {
                 items(filteredAssets, key = { it.inventoryNumber }) { asset ->
-                    // Optimized vertical padding between elements from 14.dp to 8.dp for more visual balance and compact elegance
-                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    // Corrected vertical padding to 0.dp to allow verticalArrangement = Arrangement.spacedBy(8.dp) to fully govern card spacing
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                         AssetItemCard(
                             asset = asset,
                             onStatusChange = { newStatus -> onStatusChange(asset, newStatus) },
@@ -204,23 +237,14 @@ fun DashboardScreen(
                     }
                 }
             }
+
+            // Dynamic bottom Spacer tracking system/IME insets to ensure the bottom card remains 8.dp above the searchbar
+            item {
+                Spacer(modifier = Modifier.height(searchBarTopDp + 8.dp))
+            }
         }
 
-        // Slots for dynamic category menu layout
-        var visibleSlot2 by remember(categoryNames) {
-            mutableStateOf(categoryNames.getOrNull(0) ?: "Laptop")
-        }
-        var visibleSlot3 by remember(categoryNames) {
-            mutableStateOf(categoryNames.getOrNull(1) ?: "PC Desktop")
-        }
-
-        val visibleItems = remember(visibleSlot2, visibleSlot3) {
-            listOf("Semua", visibleSlot2, visibleSlot3)
-        }
-
-        val hiddenCategories = remember(categoryNames, visibleSlot2, visibleSlot3) {
-            categoryNames.filter { it != visibleSlot2 && it != visibleSlot3 }
-        }
+        // State and Category slots moved and declared at the top of Composable to prevent duplication and facilitate onCategoryClick
 
         // Sticky Header Overlay (isolated from overscroll elastic pull and colored solid)
         // Starts exactly at Garis 2 (headerHeightDp) and scrolls up capped at Garis 1 (statusBarHeightDp)
@@ -279,14 +303,12 @@ fun DashboardScreen(
                 )
             }
 
-            // Categories list and interactive menu centered 20.dp below Center of Garis 3
-            var categoryMenuExpanded by remember { mutableStateOf(false) }
-
+            // Categories list and interactive menu centered 16.dp below Center of Garis 3 (for tighter visual grouping)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(y = statusBarHeightDp + (cleanHeightDp / 6f) + 20.dp) // tighter and more compact gap below header text
+                    .offset(y = statusBarHeightDp + (cleanHeightDp / 6f) + 16.dp) // tighter and more compact gap below header text
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .graphicsLayer { alpha = step1Alpha } // entire subheader (including Row & FlowRow) fades out dynamically
@@ -311,7 +333,7 @@ fun DashboardScreen(
                             color = textColor,
                             modifier = Modifier
                                 .clickable {
-                                    selectedCategory = if (cat == "Semua") null else cat
+                                    onCategoryClick(cat)
                                 }
                                 .padding(vertical = 4.dp)
                         )
@@ -381,9 +403,7 @@ fun DashboardScreen(
                                 color = textColor,
                                 modifier = Modifier
                                     .clickable {
-                                        visibleSlot2 = cat
-                                        selectedCategory = cat
-                                        categoryMenuExpanded = false // auto-closes instantly when selected
+                                        onCategoryClick(cat)
                                     }
                                     .padding(vertical = 4.dp)
                                     .align(Alignment.CenterVertically) // align categories centered aligned in FlowRow line
@@ -400,6 +420,7 @@ fun DashboardScreen(
                                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
                                     modifier = Modifier
                                         .padding(horizontal = 4.dp)
+                                        .offset(y = 1.dp) // shift down for pixel-perfect vertical centering
                                         .align(Alignment.CenterVertically) // center alignment for bullet separator
                                 )
                             }
@@ -413,12 +434,12 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .offset(y = stickyHeaderTopDp)
+                .offset(y = headerHeightDp) // Fixed to Upper Line 1/3 (Garis C)
                 .background(MaterialTheme.colorScheme.background)
                 .testTag("control_action_row")
                 .zIndex(4f),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top // Tepi paling atas menyentuh Garis C
         ) {
             val collapsedTitle = if (selectedCategory == null) "Perangkat" else selectedCategory!!
             
@@ -432,15 +453,15 @@ fun DashboardScreen(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .graphicsLayer { alpha = step2Alpha }
-                    .padding(start = 36.dp)
+                    .padding(start = 36.dp, top = 0.dp) // Removed top padding
             )
 
-            // Right side: Quick actions aligned CenterVertically to match high design layout
+            // Right side: Quick actions with top alignment so top edge matches Garis C exactly
             Row(
                 modifier = Modifier
-                    .align(Alignment.CenterVertically)
-                    .padding(end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .align(Alignment.Top)
+                    .padding(end = 16.dp, top = 0.dp), // Removed top padding
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 IconButton(
