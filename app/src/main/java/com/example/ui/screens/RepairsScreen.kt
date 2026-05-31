@@ -19,6 +19,12 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,7 +66,11 @@ fun RepairsScreen(
     onAddRepairClick: () -> Unit,
     searchBarTopDp: Dp = 56.dp,
     onExportClick: () -> Unit = {},
-    onScrollAtTopChanged: (Boolean) -> Unit = {}
+    onScrollAtTopChanged: (Boolean) -> Unit = {},
+    onTabChange: (AppTab) -> Unit = {},
+    onLogout: () -> Unit = {},
+    currentUsername: String = "User",
+    currentUserRole: String = "Teknisi"
 ) {
     val context = LocalContext.current
     val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -72,6 +82,7 @@ fun RepairsScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var showDateRangePicker by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
 
     // Slots for dynamic category menu layout
     var visibleSlot2 by remember {
@@ -257,28 +268,18 @@ fun RepairsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                 ) {
+                    val totalPerbaikan = filteredRepairs.size
+                    val namaKategori = if (selectedCategory == null) "Kerusakan" else selectedCategory!!
+                    val dynamicTitle = "$totalPerbaikan Perbaikan $namaKategori"
+
                     Text(
-                        text = "Laporan Perbaikan Kerusakan",
+                        text = dynamicTitle,
                         fontFamily = FontFamily.Default,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Normal
                         ),
                         color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.graphicsLayer { alpha = step1Alpha }
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Daftar Perbaikan (${filteredRepairs.size})",
-                        fontFamily = FontFamily.Default,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.ExtraLight
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.graphicsLayer { alpha = step1Alpha }
                     )
@@ -458,94 +459,151 @@ fun RepairsScreen(
                 }
 
                 IconButton(
-                    onClick = onExportClick,
+                    onClick = { showDateRangePicker = true },
                     modifier = Modifier
                         .size(36.dp)
-                        .testTag("btn_list_export_repairs")
+                        .testTag("btn_list_date_range")
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Ekspor Laporan Perbaikan",
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Pilih Rentang Tanggal",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
-        }
 
-        // Floating Gradient Overlay for bottom floating buttons
-        com.example.ui.components.BottomFadeOverlay(
-            height = 120.dp,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("btn_list_more_menu")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Menu Lainnya",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
-        val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
-        val cardBorderColor = com.example.ui.theme.AdaptiveColors.cardBorderColor(cardColor)
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                        modifier = Modifier.width(260.dp)
+                    ) {
+                        // User Profile Header
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Halo, $currentUsername!",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Normal,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Role: $currentUserRole",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Light,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
 
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 16.dp)
-                .padding(horizontal = 16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left Button: Circular Date Range Picker (like hamburger menu style)
-            IconButton(
-                onClick = { showDateRangePicker = true },
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(cardColor, CircleShape)
-                    .border(1.dp, cardBorderColor, CircleShape)
-                    .testTag("btn_filter_start_date")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = "Pilih Rentang Tanggal",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-            // Center Button: Wide "Catat Perbaikan" (Styled like Searchbar, Centered, No Shadow)
-            Card(
-                onClick = onAddRepairClick,
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = cardColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                border = BorderStroke(1.dp, cardBorderColor),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp)
-                    .testTag("btn_add_repair")
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Catat Perbaikan",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                        // Navigations (Drawer Consolidation)
+                        DropdownMenuItem(
+                            text = { Text("Dasbor & Aset (Beranda)") },
+                            onClick = {
+                                menuExpanded = false
+                                onTabChange(AppTab.Dashboard)
+                                onScrollAtTopChanged(true)
+                            },
+                            leadingIcon = { Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Perbaikan") },
+                            onClick = {
+                                menuExpanded = false
+                                onTabChange(AppTab.Perbaikan)
+                                onScrollAtTopChanged(true)
+                            },
+                            leadingIcon = { Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Perawatan Rutin") },
+                            onClick = {
+                                menuExpanded = false
+                                onTabChange(AppTab.Perawatan)
+                                onScrollAtTopChanged(true)
+                            },
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Manajemen User") },
+                            onClick = {
+                                menuExpanded = false
+                                onTabChange(AppTab.UserManagement)
+                                onScrollAtTopChanged(true)
+                            },
+                            leadingIcon = { Icon(Icons.Default.ManageAccounts, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Manajemen Kategori") },
+                            onClick = {
+                                menuExpanded = false
+                                onTabChange(AppTab.CategoryManagement)
+                                onScrollAtTopChanged(true)
+                            },
+                            leadingIcon = { Icon(Icons.Default.Category, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Filter Action
+                        DropdownMenuItem(
+                            text = { Text("Tampilkan Semua Kategori") },
+                            onClick = {
+                                menuExpanded = false
+                                selectedCategory = null
+                                categoryMenuExpanded = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Export actions
+                        DropdownMenuItem(
+                            text = { Text("Ekspor Laporan Perbaikan PDF") },
+                            onClick = {
+                                menuExpanded = false
+                                onExportClick()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Logout action
+                        DropdownMenuItem(
+                            text = { Text("Logout") },
+                            onClick = {
+                                menuExpanded = false
+                                onLogout()
+                            },
+                            leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+                    }
                 }
-            }
-
-            // Right Button: Export PDF (Circular like hamburger menu style)
-            IconButton(
-                onClick = onExportClick,
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(cardColor, CircleShape)
-                    .border(1.dp, cardBorderColor, CircleShape)
-                    .testTag("btn_export_repairs")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Export PDF",
-                    tint = MaterialTheme.colorScheme.primary
-                )
             }
         }
 
@@ -663,102 +721,76 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
         else -> Color(0xFF2E7D32) // Green
     }
 
-    val cardColor = com.example.ui.theme.AdaptiveColors.cardColorAccent()
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 76.dp)
             .clickable { onClick() }
             .testTag("repair_card_${repair.id}"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .padding(16.dp)
                 .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // First Row: Asset Name and Status badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+            // Sisi Kiri
+            Column(
+                modifier = Modifier.weight(1.1f),
+                verticalArrangement = Arrangement.Center
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = assetName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "${repair.inventoryNumber}  -  $assetType",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = statusColor.copy(alpha = 0.12f),
-                    ) {
-                        Text(
-                            text = repair.status,
-                            color = statusColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+                Text(
+                    text = assetName,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = repair.problem,
+                    fontWeight = FontWeight.Normal,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            // Thin Horizontal Divider Line like main assets card style
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 4.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Second Row: Kendala (on the bottom left) and Teknisi (on the bottom right)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Sisi Kanan
+            Column(
+                modifier = Modifier.weight(0.9f),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
             ) {
-                // Kendala
-                Column(modifier = Modifier.weight(1.2f)) {
-                    Text(
-                        text = repair.problem,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                // Teknisi Penanggung Jawab
-                Column(
-                    modifier = Modifier.weight(0.8f),
-                    horizontalAlignment = Alignment.End
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = statusColor.copy(alpha = 0.12f),
                 ) {
                     Text(
-                        text = repair.technician,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        text = repair.status,
+                        color = statusColor,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = repair.technician,
+                    fontWeight = FontWeight.Normal,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

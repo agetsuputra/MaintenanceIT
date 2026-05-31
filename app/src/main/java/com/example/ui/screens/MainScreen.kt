@@ -562,7 +562,20 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                             } else {
                                                                 Toast.makeText(context, "Ekspor gagal atau rentang tanggal kosong!", Toast.LENGTH_SHORT).show()
                                                             }
-                                                        }
+                                                        },
+                                                        onScrollAtTopChanged = { isDashboardAtTop = it },
+                                                        onTabChange = { tab ->
+                                                            currentTab = tab
+                                                            currentSubScreen = SubScreen.List
+                                                        },
+                                                        onLogout = {
+                                                            currentUsername = ""
+                                                            currentUserRole = ""
+                                                            currentTab = AppTab.Dashboard
+                                                            currentSubScreen = SubScreen.List
+                                                        },
+                                                        currentUsername = currentUsername,
+                                                        currentUserRole = currentUserRole
                                                     )
                                                 }
                                                 2 -> {
@@ -704,8 +717,29 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
  
                 val customBorderColor = if (isDarkTheme) Color(0xFF1B1B1B) else Color(0xFFE0E0E0)
 
+                val transitionToRepairs by remember {
+                    derivedStateOf {
+                        val rawPage = pagerState.currentPage
+                        val offset = pagerState.currentPageOffsetFraction
+                        // Convert to a stable [0..2] mod space (0: Dashboard, 1: Repairs, 2: Maintenance)
+                        val currentMod = rawPage % 3
+                        
+                        val floatIndex = (currentMod + offset).let {
+                            if (it < 0f) it + 3f else if (it >= 3f) it - 3f else it
+                        }
+                        
+                        if (floatIndex <= 1f) {
+                            floatIndex
+                        } else if (floatIndex >= 2f) {
+                            (3f - floatIndex).coerceIn(0f, 1f)
+                        } else {
+                            1f
+                        }
+                    }
+                }
+
                 AnimatedVisibility(
-                    visible = (currentTab == AppTab.Dashboard && currentSubScreen == SubScreen.List),
+                    visible = ((currentTab == AppTab.Dashboard || currentTab == AppTab.Perbaikan) && currentSubScreen == SubScreen.List),
                     enter = fadeIn(),
                     exit = fadeOut(),
                     modifier = Modifier
@@ -725,6 +759,13 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
+                                .graphicsLayer {
+                                    this.alpha = 1f - transitionToRepairs
+                                    this.scaleX = 0.5f + 0.5f * (1f - transitionToRepairs)
+                                    this.scaleY = 0.5f + 0.5f * (1f - transitionToRepairs)
+                                    this.translationX = (200f * transitionToRepairs)
+                                    this.transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
+                                }
                                 .background(cardColor, shape = RoundedCornerShape(28.dp))
                                 .border(BorderStroke(0.5.dp, customBorderColor), shape = RoundedCornerShape(28.dp)),
                             contentAlignment = Alignment.CenterStart
@@ -732,6 +773,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             TextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
+                                enabled = (transitionToRepairs < 0.1f),
                                 placeholder = {
                                     Text(
                                         text = "cari kode atau nama...",
