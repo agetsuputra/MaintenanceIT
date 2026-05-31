@@ -50,7 +50,7 @@ import com.example.data.model.Asset
 import com.example.data.model.Repair
 import com.example.ui.components.AssetItemCard
 
-private const val SHOW_DEBUG_LINES = true
+private const val SHOW_DEBUG_LINES = false
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -241,10 +241,9 @@ fun DashboardScreen(
                 }
             }
 
-            // Dynamic bottom Spacer tracking system/IME insets to ensure the bottom card remains 14.dp above the searchbar
+            // Dynamic bottom Spacer tracking total searchbar area adaptively, ensuring consistent spacing under the last card
             item {
-                val keyboardHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-                Spacer(modifier = Modifier.height(searchBarTopDp + 14.dp + keyboardHeight))
+                Spacer(modifier = Modifier.height(searchBarTopDp + 14.dp))
             }
         }
 
