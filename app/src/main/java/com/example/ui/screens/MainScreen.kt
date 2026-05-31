@@ -517,7 +517,31 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                         searchQuery = searchQuery,
                                                         searchBarTopDp = slotMetrics.anchorHeight,
                                                         onAddAssetClick = { currentSubScreen = SubScreen.AddAsset },
-                                                        onScrollAtTopChanged = { isDashboardAtTop = it }
+                                                        onScrollAtTopChanged = { isDashboardAtTop = it },
+                                                        onTabChange = { tab ->
+                                                            currentTab = tab
+                                                            currentSubScreen = SubScreen.List
+                                                        },
+                                                        onExportClick = { type ->
+                                                            val f = if (type == "excel") {
+                                                                viewModel.exportAllLogsToExcel(context)
+                                                            } else {
+                                                                viewModel.exportToPdf(context, type)
+                                                            }
+                                                            if (f != null) {
+                                                                viewModel.shareExportFile(context, f)
+                                                            } else {
+                                                                Toast.makeText(context, "Ekspor gagal!", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        },
+                                                        onLogout = {
+                                                            currentUsername = ""
+                                                            currentUserRole = ""
+                                                            currentTab = AppTab.Dashboard
+                                                            currentSubScreen = SubScreen.List
+                                                        },
+                                                        currentUsername = currentUsername,
+                                                        currentUserRole = currentUserRole
                                                     )
                                                 }
                                                 1 -> {
@@ -592,8 +616,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     }
                 }
  
-                // 2. Floating Buttons (on top of everything else)
-                if (currentSubScreen == SubScreen.List || currentSubScreen == SubScreen.AddAsset || currentSubScreen == SubScreen.AddRepair || currentSubScreen == SubScreen.AddMaintenance) {
+                // 2. Floating Buttons (on top of everything else) - Only for Sub-Screens (Add screens) close controls
+                if (currentSubScreen == SubScreen.AddAsset || currentSubScreen == SubScreen.AddRepair || currentSubScreen == SubScreen.AddMaintenance) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -602,25 +626,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val showHamburger = currentSubScreen != SubScreen.List || (pagerState.currentPage % 3 != 0) || !isDashboardAtTop
-                        if (showHamburger) {
-                            FloatingActionButton(
-                                onClick = {
-                                    hamburgerMenuExpanded = true
-                                },
-                                shape = CircleShape,
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag("btn_drawer_toggle"),
-                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
-                            ) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.size(48.dp))
-                        }
+                        Spacer(modifier = Modifier.size(48.dp))
 
                         if (currentSubScreen == SubScreen.AddAsset) {
                             FloatingActionButton(
@@ -670,30 +676,6 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             ) {
                                 Icon(Icons.Default.Close, contentDescription = "Kembali")
                             }
-                        } else {
-                            val showProfile = currentSubScreen != SubScreen.List || (pagerState.currentPage % 3 != 0) || !isDashboardAtTop
-                            if (showProfile) {
-                                Box {
-                                    FloatingActionButton(
-                                        onClick = { userMenuExpanded = true },
-                                        shape = CircleShape,
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .testTag("btn_user_profile_floating"),
-                                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
-                                    ) {
-                                        Text(
-                                            text = currentUsername.take(1).uppercase(),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp
-                                        )
-                                    }
-                                }
-                            } else {
-                                Spacer(modifier = Modifier.size(48.dp))
-                            }
                         }
                     }
                 }
@@ -725,7 +707,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 val addIconColor = if (isAddPressed) searchBarActiveTextColor else searchBarElementColor
                 val scanIconColor = if (isScanPressed) searchBarActiveTextColor else searchBarElementColor
  
-                val customBorderColor = if (isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF555555)
+                val customBorderColor = if (isDarkTheme) Color(0xFF1B1B1B) else Color(0xFFE0E0E0)
 
                 AnimatedVisibility(
                     visible = (currentTab == AppTab.Dashboard && currentSubScreen == SubScreen.List),
@@ -749,7 +731,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .background(cardColor, shape = RoundedCornerShape(28.dp))
-                                .border(BorderStroke(1.dp, customBorderColor), shape = RoundedCornerShape(28.dp)),
+                                .border(BorderStroke(0.5.dp, customBorderColor), shape = RoundedCornerShape(28.dp)),
                             contentAlignment = Alignment.CenterStart
                         ) {
                             TextField(
@@ -804,7 +786,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                             modifier = Modifier
                                 .size(56.dp)
                                 .background(cardColor, shape = CircleShape)
-                                .border(BorderStroke(1.dp, customBorderColor), shape = CircleShape)
+                                .border(BorderStroke(0.5.dp, customBorderColor), shape = CircleShape)
                                 .clickable {
                                     showingBarcodeScanner = { code ->
                                         val trimmedCode = code.trim()

@@ -41,7 +41,7 @@ fun AssetItemCard(
             ) {
                 Text(
                     text = asset.name,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Normal,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -50,6 +50,7 @@ fun AssetItemCard(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = asset.location,
+                    fontWeight = FontWeight.Light,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     maxLines = 1,
@@ -65,7 +66,7 @@ fun AssetItemCard(
             Text(
                 text = asset.status,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Normal,
                 color = statusColor,
                 modifier = Modifier.align(Alignment.CenterVertically)
             )
