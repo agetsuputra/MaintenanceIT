@@ -188,8 +188,8 @@ fun DashboardScreen(
                 }
             } else {
                 items(filteredAssets, key = { it.inventoryNumber }) { asset ->
-                    // Raised vertical padding between elements from 6.dp to 10.dp for more breathing space
-                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    // Raised vertical padding between elements from 10.dp to 14.dp for more breathing space and layout elegance
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                         AssetItemCard(
                             asset = asset,
                             onStatusChange = { newStatus -> onStatusChange(asset, newStatus) },
@@ -200,14 +200,39 @@ fun DashboardScreen(
             }
         }
 
-        // Header Area overlay containing centered main statistics and spacing-optimized category LazyRow
+        // 1. Solid background cover for HP Status Bar to prevent visual leaks (0 to statusBarHeightDp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(statusBarHeightDp)
+                .background(MaterialTheme.colorScheme.background)
+                .zIndex(10f)
+        )
+
+        // Slots for dynamic category menu layout
+        var visibleSlot2 by remember(categoryNames) {
+            mutableStateOf(categoryNames.getOrNull(0) ?: "Laptop")
+        }
+        var visibleSlot3 by remember(categoryNames) {
+            mutableStateOf(categoryNames.getOrNull(1) ?: "PC Desktop")
+        }
+
+        val visibleItems = remember(visibleSlot2, visibleSlot3) {
+            listOf("Semua", visibleSlot2, visibleSlot3)
+        }
+
+        val hiddenCategories = remember(categoryNames, visibleSlot2, visibleSlot3) {
+            categoryNames.filter { it != visibleSlot2 && it != visibleSlot3 }
+        }
+
+        // Header Area overlay with solid non-transparent background to cut off scrolling cards cleanly
         // Top offset moves up natively with scroll (-scrollOffsetDp)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(headerHeightDp)
                 .offset(y = -scrollOffsetDp)
-                .graphicsLayer { alpha = step1Alpha }
+                .background(MaterialTheme.colorScheme.background)
         ) {
             Box(
                 modifier = Modifier
@@ -216,92 +241,130 @@ fun DashboardScreen(
                     .padding(top = statusBarHeightDp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    val activeCount = remember(assets, selectedCategory) {
-                        if (selectedCategory == null) {
+                // Precise stats title text centered vertically and horizontally relative to Garis 3
+                Text(
+                    text = remember(assets, selectedCategory) {
+                        val activeCount = if (selectedCategory == null) {
                             assets.count { it.status == "Aktif" }
                         } else {
                             assets.count { it.type.equals(selectedCategory, ignoreCase = true) && it.status == "Aktif" }
                         }
-                    }
-                    val activeHeaderText = if (selectedCategory == null) {
-                        "$activeCount perangkat aktif"
-                    } else {
-                        "$activeCount ${selectedCategory?.lowercase()} aktif"
-                    }
-
-                    // Centered stats title text centered vertically and horizontally relative to Garis 3
-                    Text(
-                        text = activeHeaderText,
-                        fontFamily = FontFamily.Default,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Normal
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(2.dp)) // Tightly packed per instructions
-
-                    val categoryNamesWithSemua = remember(categoryNames) {
-                        listOf("Semua") + categoryNames
-                    }
-
-                    val pagerNestedScrollConnection = remember {
-                        object : NestedScrollConnection {
-                            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                                return Offset(x = available.x, y = 0f)
-                            }
+                        if (selectedCategory == null) {
+                            "$activeCount perangkat aktif"
+                        } else {
+                            "$activeCount ${selectedCategory?.lowercase()} aktif"
                         }
-                    }
+                    },
+                    fontFamily = FontFamily.Default,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.Center)
+                )
 
-                    // Tightly-spaced Category Sub-header with horizontal padding 24.dp and spacedBy 12.dp
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                            .nestedScroll(pagerNestedScrollConnection)
-                            .testTag("row_categories"),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        itemsIndexed(categoryNamesWithSemua) { index, cat ->
-                            val isSelected = if (cat == "Semua") selectedCategory == null else selectedCategory == cat
-                            val textAlpha = if (isSelected) 1f else 0.5f
-                            val textWeight = if (isSelected) FontWeight.Medium else FontWeight.ExtraLight
-                            val textColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                // Rapatkan jarak vertikal antara judul statistik utama dengan baris kategori ini secara intensif (y = 26.dp below Center)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(y = 26.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .testTag("row_categories")
+                ) {
+                    visibleItems.forEachIndexed { index, cat ->
+                        val isSelected = if (cat == "Semua") selectedCategory == null else selectedCategory == cat
+                        val textWeight = if (isSelected) FontWeight.Medium else FontWeight.ExtraLight
+                        val textColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
 
+                        Text(
+                            text = cat,
+                            fontFamily = FontFamily.Default,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 11.sp,
+                                fontWeight = textWeight
+                            ),
+                            color = textColor,
+                            modifier = Modifier
+                                .clickable {
+                                    selectedCategory = if (cat == "Semua") null else cat
+                                }
+                                .padding(vertical = 4.dp)
+                        )
+
+                        // Bullet point separator as a completely standalone and distinct Text view
+                        if (index < visibleItems.lastIndex) {
                             Text(
-                                text = cat,
+                                text = "•",
                                 fontFamily = FontFamily.Default,
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     fontSize = 11.sp,
-                                    fontWeight = textWeight
+                                    fontWeight = FontWeight.ExtraLight
                                 ),
-                                color = textColor,
-                                modifier = Modifier
-                                    .clickable {
-                                        selectedCategory = if (cat == "Semua") null else (if (selectedCategory == cat) null else cat)
-                                    }
-                                    .padding(vertical = 4.dp)
-                                    .graphicsLayer { alpha = textAlpha }
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                                modifier = Modifier.padding(horizontal = 2.dp)
                             )
+                        }
+                    }
 
-                            if (index < categoryNamesWithSemua.lastIndex) {
-                                Text(
-                                    text = "•",
-                                    fontFamily = FontFamily.Default,
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.ExtraLight
-                                    ),
-                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
-                                )
+                    // Bullet separator before expansion '•••'
+                    Text(
+                        text = "•",
+                        fontFamily = FontFamily.Default,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraLight
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(horizontal = 2.dp)
+                    )
+
+                    // Expansion '•••' button with dynamic positioning switch rules
+                    var categoryMenuExpanded by remember { mutableStateOf(false) }
+
+                    Box {
+                        Text(
+                            text = "•••",
+                            fontFamily = FontFamily.Default,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraLight
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clickable { categoryMenuExpanded = true }
+                                .padding(vertical = 4.dp, horizontal = 4.dp)
+                                .testTag("btn_expand_categories")
+                        )
+
+                        DropdownMenu(
+                            expanded = categoryMenuExpanded,
+                            onDismissRequest = { categoryMenuExpanded = false },
+                            modifier = Modifier
+                                .width(180.dp)
+                                .background(MaterialTheme.colorScheme.surface)
+                        ) {
+                            hiddenCategories.forEach { cat ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = cat,
+                                            fontFamily = FontFamily.Default,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Normal
+                                        )
+                                    },
+                                    onClick = {
+                                        categoryMenuExpanded = false
+                                        // Switch position logic: swap chosen hidden category into slot 2
+                                        visibleSlot2 = cat
+                                        selectedCategory = cat
+                                    }
+                                );
                             }
                         }
                     }
@@ -309,7 +372,7 @@ fun DashboardScreen(
             }
         }
 
-        // Sticky Header Overlay (isolated from overscroll elastic pull)
+        // Sticky Header Overlay (isolated from overscroll elastic pull and colored solid)
         // Starts exactly at Garis 2 (headerHeightDp) and scrolls up capped at Garis 1 (statusBarHeightDp)
         val stickyHeaderTopDp = (headerHeightDp - scrollOffsetDp).coerceAtLeast(statusBarHeightDp)
         
@@ -321,12 +384,10 @@ fun DashboardScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .testTag("control_action_row"),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top // Aligns all action touch areas to touch Garis 2 perfectly
         ) {
             val collapsedTitle = if (selectedCategory == null) "Perangkat" else selectedCategory!!
             
-            // Fades in from alpha 0f to 1f between 1/3 and 2/3 scroll distance
-            // Aligned perfectly vertically with Asset Name inside Card (horizontal padding 36.dp)
             Text(
                 text = collapsedTitle,
                 fontFamily = FontFamily.Default,
@@ -336,14 +397,16 @@ fun DashboardScreen(
                 ),
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
-                    .graphicsLayer { alpha = step2Alpha }
+                    .align(Alignment.CenterVertically)
                     .padding(start = 36.dp)
             )
 
-            // Right side: Quick actions + Consolidated Dropdown Menu Trigger
+            // Right side: Quick actions with top alignment so top edge matches Garis 2 exactly
             Row(
-                modifier = Modifier.padding(end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.Top)
+                    .padding(end = 16.dp),
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 IconButton(
