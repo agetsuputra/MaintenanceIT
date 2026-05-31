@@ -65,7 +65,7 @@ fun AssetItemCard(
             }
             Text(
                 text = asset.status,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Normal,
                 color = statusColor,
                 modifier = Modifier.align(Alignment.CenterVertically)
