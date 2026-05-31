@@ -612,8 +612,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 if (currentSubScreen == SubScreen.List) {
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     
-                    // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ON Dashboard or Perbaikan
-                    if (currentTab == AppTab.Dashboard || currentTab == AppTab.Perbaikan) {
+                    // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ON Dashboard, Perbaikan, or Perawatan
+                    if (currentTab == AppTab.Dashboard || currentTab == AppTab.Perbaikan || currentTab == AppTab.Perawatan) {
                         val bottomEdge = (slotMetrics.bottomOffset - 16.dp).coerceAtLeast(0.dp)
                         val gradientHeight = 56.dp + 16.dp
                         com.example.ui.components.BottomFadeOverlay(

@@ -158,11 +158,35 @@ fun MaintenanceScreen(
         val step1Alpha = (1f - (progress / 0.33f)).coerceIn(0f, 1f)
         val step2Alpha = ((progress - 0.33f) / 0.33f).coerceIn(0f, 1f)
 
+        val clipShape = remember(boxControlTopDp) {
+            object : androidx.compose.ui.graphics.Shape {
+                override fun createOutline(
+                    size: androidx.compose.ui.geometry.Size,
+                    layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+                    density: androidx.compose.ui.unit.Density
+                ): androidx.compose.ui.graphics.Outline {
+                    val topY = with(density) { (boxControlTopDp + 56.dp).toPx() }
+                    return androidx.compose.ui.graphics.Outline.Rectangle(
+                        androidx.compose.ui.geometry.Rect(
+                            left = 0f,
+                            top = topY,
+                            right = size.width,
+                            bottom = size.height
+                        )
+                    )
+                }
+            }
+        }
+
         // LazyColumn containing ONLY list items and spacer areas for absolute fluid scroll isolation
         LazyColumn(
             state = scrollState,
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    clip = true
+                    shape = clipShape
+                }
                 .testTag("maintenances_column"),
             contentPadding = PaddingValues(
                 top = 0.dp,
@@ -218,15 +242,16 @@ fun MaintenanceScreen(
             // Dynamic bottom Spacer tracking total searchbar area adaptively, ensuring consistent spacing under the last card
             item {
                 val keyboardHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-                val estimatedItemsHeight = if (filteredMaintenances.isEmpty()) {
-                    140.dp
-                } else {
-                    (filteredMaintenances.size * 76).dp + ((filteredMaintenances.size - 1) * 14).dp
-                }
                 val firstSpacerHeight = boxControlDefaultTop + 56.dp - 14.dp
-                val contentHeightBeforeBottomSpacer = firstSpacerHeight + estimatedItemsHeight
+                val N = filteredMaintenances.size
                 val targetTotalHeight = screenHeight + maxScrollOffset
-                val nativeBottomSpacer = targetTotalHeight - contentHeightBeforeBottomSpacer
+                val nativeBottomSpacer = if (N == 0) {
+                    val emptyStateHeight = 140.dp
+                    targetTotalHeight - firstSpacerHeight - emptyStateHeight - 28.dp
+                } else {
+                    targetTotalHeight - firstSpacerHeight - (N * 76).dp - ((N + 1) * 14).dp
+                }
+                
                 val minBottomSpacer = (searchBarTopDp + 14.dp + keyboardHeight)
                 val bottomSpacerHeight = nativeBottomSpacer.coerceAtLeast(minBottomSpacer)
                 
@@ -270,8 +295,8 @@ fun MaintenanceScreen(
                         .padding(horizontal = 24.dp)
                 ) {
                     val totalPerawatan = filteredMaintenances.size
-                    val namaKategori = if (selectedCategory == null) "perawatan" else selectedCategory!!.lowercase()
-                    val dynamicTitle = "$totalPerawatan perawatan $namaKategori"
+                    val namaKategori = if (selectedCategory == null) "perawatan rutin" else "perawatan ${selectedCategory!!.lowercase()}"
+                    val dynamicTitle = "$totalPerawatan $namaKategori"
 
                     Text(
                         text = dynamicTitle,
