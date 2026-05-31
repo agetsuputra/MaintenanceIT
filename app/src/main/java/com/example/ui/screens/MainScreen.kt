@@ -612,8 +612,8 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 if (currentSubScreen == SubScreen.List) {
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     
-                    // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ONLY on Dashboard
-                    if (currentTab == AppTab.Dashboard) {
+                    // Bottom Gradient Overlay (anchored directly to the top edge of the floating searchbar) - ON Dashboard or Perbaikan
+                    if (currentTab == AppTab.Dashboard || currentTab == AppTab.Perbaikan) {
                         val bottomEdge = (slotMetrics.bottomOffset - 16.dp).coerceAtLeast(0.dp)
                         val gradientHeight = 56.dp + 16.dp
                         com.example.ui.components.BottomFadeOverlay(
@@ -790,6 +790,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                     disabledContainerColor = Color.Transparent,
                                     focusedIndicatorColor = Color.Transparent,
                                     unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent,
                                     focusedPlaceholderColor = searchBarElementColor,
                                     unfocusedPlaceholderColor = searchBarElementColor,
                                     cursorColor = searchBarActiveTextColor

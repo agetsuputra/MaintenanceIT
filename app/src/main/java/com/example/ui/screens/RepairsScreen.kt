@@ -229,7 +229,17 @@ fun RepairsScreen(
             // Dynamic bottom Spacer tracking total searchbar area adaptively, ensuring consistent spacing under the last card
             item {
                 val keyboardHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-                Spacer(modifier = Modifier.height(searchBarTopDp + 14.dp + keyboardHeight))
+                val estimatedItemsHeight = if (filteredRepairs.isEmpty()) {
+                    140.dp
+                } else {
+                    (filteredRepairs.size * 76).dp + ((filteredRepairs.size - 1) * 14).dp
+                }
+                val requiredContentHeight = screenHeight + totalScrollRangeDp
+                val currentContentBeforeBottomSpacer = statusBarHeightDp + totalScrollRangeDp + 32.dp + estimatedItemsHeight
+                val minBottomSpacerRequired = (requiredContentHeight - currentContentBeforeBottomSpacer).coerceAtLeast(0.dp)
+                val bottomSpacerHeight = minBottomSpacerRequired.coerceAtLeast(searchBarTopDp + 14.dp) + keyboardHeight
+                
+                Spacer(modifier = Modifier.height(bottomSpacerHeight))
             }
         }
 
@@ -724,70 +734,62 @@ fun RepairItemCard(repair: Repair, assets: List<Asset>, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 76.dp)
+            .height(76.dp)
             .clickable { onClick() }
             .testTag("repair_card_${repair.id}"),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.Center
         ) {
-            // Sisi Kiri
-            Column(
-                modifier = Modifier.weight(1.1f),
-                verticalArrangement = Arrangement.Center
+            // Row Atas: assetName di kiri dan repair.status di kanan (Tanpa background Box status)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = assetName,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Normal,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = repair.problem,
-                    fontWeight = FontWeight.Normal,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text = repair.status,
+                    color = statusColor,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Normal
                 )
             }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Sisi Kanan
-            Column(
-                modifier = Modifier.weight(0.9f),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Center
+            Spacer(modifier = Modifier.height(2.dp))
+            // Row Bawah: repair.problem di kiri dan repair.technician di kanan
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = statusColor.copy(alpha = 0.12f),
-                ) {
-                    Text(
-                        text = repair.status,
-                        color = statusColor,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = repair.problem,
+                    fontWeight = FontWeight.Light,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = repair.technician,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.Light,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
