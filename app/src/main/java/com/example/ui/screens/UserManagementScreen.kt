@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Lock
@@ -140,7 +141,7 @@ fun UserManagementScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(boxControlDefaultTop + 56.dp + 14.dp))
+                Spacer(modifier = Modifier.height(boxControlDefaultTop + 56.dp - 14.dp))
             }
 
             if (users.isEmpty()) {
@@ -233,7 +234,7 @@ fun UserManagementScreen(
 
             item {
                 val keyboardHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-                val firstSpacerHeight = boxControlDefaultTop + 56.dp + 14.dp
+                val firstSpacerHeight = boxControlDefaultTop + 56.dp - 14.dp
                 val N = users.size
                 val targetTotalHeight = screenHeight + maxScrollOffset
                 val nativeBottomSpacer = if (N == 0) {
@@ -542,52 +543,50 @@ fun UserEditorForm(
         modifier = Modifier
             .fillMaxSize()
             .background(themeBgColor)
-            .statusBarsPadding(),
+            .statusBarsPadding()
+            .zIndex(5f),
         color = themeBgColor
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Content Area inside the large single Card
-            Column(
-                modifier = Modifier.weight(1f)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                shape = RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomStart = 16.dp,
+                    bottomEnd = 16.dp
+                ),
+                colors = CardDefaults.cardColors(containerColor = surfaceColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = null
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(
-                        topStart = 0.dp,
-                        topEnd = 0.dp,
-                        bottomStart = 16.dp,
-                        bottomEnd = 16.dp
-                    ),
-                    colors = CardDefaults.cardColors(containerColor = surfaceColor),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    border = null
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 24.dp)
-                    ) {
-                        // Baris 1: Username & Header Area (No Icon, offset by 66.dp to align with text fields)
+                    item {
+                        // Baris 1 (Topmost): Nama Lengkap Input (No Icon, horizontal padding exactly 24.dp to line up with icons beneath it)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(72.dp)
-                                .padding(start = 66.dp, end = 24.dp),
+                                .padding(start = 24.dp, end = 24.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             TextField(
-                                value = username,
-                                onValueChange = { if (user == null) username = it.trim().lowercase() },
+                                value = name,
+                                onValueChange = { name = it },
                                 placeholder = {
                                     Text(
-                                        "Username *",
+                                        "Nama Lengkap *",
                                         style = MaterialTheme.typography.titleLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                 },
-                                enabled = user == null,
                                 textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
@@ -601,14 +600,18 @@ fun UserEditorForm(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
+                    }
 
+                    item {
                         HorizontalDivider(
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                             modifier = Modifier.padding(start = 24.dp)
                         )
+                    }
 
-                        // Baris 2: Nama Lengkap Input with Outlined.Badge Icon
+                    item {
+                        // Baris 2: Username Input with Outlined.Badge Icon
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -624,15 +627,16 @@ fun UserEditorForm(
                             )
                             Spacer(modifier = Modifier.width(24.dp))
                             TextField(
-                                value = name,
-                                onValueChange = { name = it },
+                                value = username,
+                                onValueChange = { if (user == null) username = it.trim().lowercase() },
                                 placeholder = {
                                     Text(
-                                        "Nama Lengkap *",
+                                        "Username *",
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                 },
+                                enabled = user == null,
                                 textStyle = MaterialTheme.typography.bodyLarge,
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
@@ -646,13 +650,17 @@ fun UserEditorForm(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
+                    }
 
+                    item {
                         HorizontalDivider(
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                             modifier = Modifier.padding(start = 24.dp)
                         )
+                    }
 
+                    item {
                         // Baris 3: PIN Input with Outlined.Lock Icon & NumberPassword Keyboard
                         Row(
                             modifier = Modifier
@@ -697,13 +705,17 @@ fun UserEditorForm(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
+                    }
 
+                    item {
                         HorizontalDivider(
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                             modifier = Modifier.padding(start = 24.dp)
                         )
+                    }
 
+                    item {
                         // Baris 4: Hak Akses Selector with Outlined.ManageAccounts Icon
                         Row(
                             modifier = Modifier
@@ -727,8 +739,10 @@ fun UserEditorForm(
                                 modifier = Modifier.weight(1f)
                             )
                         }
+                    }
 
-                        // Inline Expandable Dropdown with sliding transitions
+                    item {
+                        // Inline Expandable Dropdown with sliding transitions and selected checkmarks
                         AnimatedVisibility(visible = roleExpanded) {
                             Column(
                                 modifier = Modifier
@@ -744,7 +758,8 @@ fun UserEditorForm(
                                                 roleExpanded = false
                                             }
                                             .padding(start = 66.dp, end = 24.dp, top = 14.dp, bottom = 14.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
                                             text = opt,
@@ -752,17 +767,29 @@ fun UserEditorForm(
                                             color = if (role == opt) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                             fontWeight = if (role == opt) FontWeight.Bold else FontWeight.Normal
                                         )
+                                        if (role == opt) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Terpilih",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
+                    }
 
+                    item {
                         HorizontalDivider(
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                             modifier = Modifier.padding(start = 24.dp)
                         )
+                    }
 
+                    item {
                         // Baris 5: Login Biometrik with Outlined.Fingerprint Icon & Switch Toggle
                         Row(
                             modifier = Modifier
