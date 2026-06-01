@@ -479,7 +479,29 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 viewModel.deleteUser(user) {
                                                     Toast.makeText(context, "User berhasil dihapus!", Toast.LENGTH_SHORT).show()
                                                 }
-                                            }
+                                            },
+                                            onExportAllLogs = {
+                                                val f = viewModel.exportAllLogsToExcel(context)
+                                                if (f != null) {
+                                                    viewModel.shareExportFile(context, f)
+                                                } else {
+                                                    Toast.makeText(context, "Ekspor gagal!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            onScrollAtTopChanged = { isDashboardAtTop = it },
+                                            onTabChange = { tab ->
+                                                currentTab = tab
+                                                currentSubScreen = SubScreen.List
+                                            },
+                                            onLogout = {
+                                                currentUsername = ""
+                                                currentUserRole = ""
+                                                currentTab = AppTab.Dashboard
+                                                currentSubScreen = SubScreen.List
+                                            },
+                                            currentUsername = currentUsername,
+                                            currentUserRole = currentUserRole,
+                                            searchBarTopDp = slotMetrics.anchorHeight
                                         )
                                     }
                                     AppTab.CategoryManagement -> {
