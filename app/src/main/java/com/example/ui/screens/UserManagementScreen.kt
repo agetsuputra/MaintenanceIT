@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -64,7 +65,6 @@ fun UserManagementScreen(
     var editingUser by remember { mutableStateOf<User?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    val cardColor = com.example.ui.theme.AdaptiveColors.cardColorMedium()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val density = LocalDensity.current
 
@@ -186,12 +186,12 @@ fun UserManagementScreen(
                                 .testTag("user_card_${user.username}"),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            shape = RoundedCornerShape(24.dp)
+                            shape = RoundedCornerShape(20.dp)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
+                                    .padding(horizontal = 20.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -322,7 +322,7 @@ fun UserManagementScreen(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .graphicsLayer { alpha = step2Alpha }
-                    .padding(start = 32.dp)
+                    .padding(start = 36.dp)
                     .align(Alignment.CenterStart)
             )
  
@@ -510,7 +510,7 @@ fun UserEditorForm(
         "Kepala Unit IT" -> "Kepala Unit"
         "Staff IT" -> "Administrator"
         "Teknisi" -> "Teknisi"
-        else -> "Administrator"
+        else -> ""
     }
     var role by remember { mutableStateOf(initialRole) }
     var isBiometricEnabled by remember { mutableStateOf(user?.isBiometricEnabled ?: false) }
@@ -569,34 +569,37 @@ fun UserEditorForm(
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     item {
-                        // Baris 1 (Topmost): Nama Lengkap Input (No Icon, horizontal padding exactly 24.dp to line up with icons beneath it)
+                        // Baris 1: Nama Lengkap Input (No Icon, horizontal padding exactly 24.dp)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(72.dp)
-                                .padding(start = 24.dp, end = 24.dp),
+                                .padding(horizontal = 24.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextField(
+                            BasicTextField(
                                 value = name,
                                 onValueChange = { name = it },
-                                placeholder = {
-                                    Text(
-                                        "Nama Lengkap *",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                },
-                                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    disabledContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    disabledIndicatorColor = Color.Transparent
+                                textStyle = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 ),
                                 singleLine = true,
+                                decorationBox = { innerTextField ->
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        if (name.isEmpty()) {
+                                            Text(
+                                                "Nama Lengkap *",
+                                                style = MaterialTheme.typography.titleLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -626,27 +629,27 @@ fun UserEditorForm(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(24.dp))
-                            TextField(
+                            BasicTextField(
                                 value = username,
                                 onValueChange = { if (user == null) username = it.trim().lowercase() },
-                                placeholder = {
-                                    Text(
-                                        "Username *",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                },
                                 enabled = user == null,
-                                textStyle = MaterialTheme.typography.bodyLarge,
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    disabledContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    disabledIndicatorColor = Color.Transparent
-                                ),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                                 singleLine = true,
+                                decorationBox = { innerTextField ->
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        if (username.isEmpty()) {
+                                            Text(
+                                                "Username *",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -676,32 +679,32 @@ fun UserEditorForm(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(24.dp))
-                            TextField(
+                            BasicTextField(
                                 value = pin,
                                 onValueChange = { newVal ->
                                     if (newVal.all { it.isDigit() } && newVal.length <= 6) {
                                         pin = newVal
                                     }
                                 },
-                                placeholder = {
-                                    Text(
-                                        "PIN (6 Digit) *",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                },
-                                textStyle = MaterialTheme.typography.bodyLarge,
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    disabledContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    disabledIndicatorColor = Color.Transparent
-                                ),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                                 singleLine = true,
                                 visualTransformation = PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                decorationBox = { innerTextField ->
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        if (pin.isEmpty()) {
+                                            Text(
+                                                "PIN (6 Digit) *",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -716,7 +719,7 @@ fun UserEditorForm(
                     }
 
                     item {
-                        // Baris 4: Hak Akses Selector with Outlined.ManageAccounts Icon
+                        // Baris 4: Role Akses Selector with Outlined.ManageAccounts Icon
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -733,7 +736,7 @@ fun UserEditorForm(
                             )
                             Spacer(modifier = Modifier.width(24.dp))
                             Text(
-                                text = if (role.isNotBlank()) role else "Hak Akses *",
+                                text = if (role.isNotBlank()) role else "Role Akses",
                                 color = if (role.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.weight(1f)
@@ -790,7 +793,7 @@ fun UserEditorForm(
                     }
 
                     item {
-                        // Baris 5: Login Biometrik with Outlined.Fingerprint Icon & Switch Toggle
+                        // Baris 5: Login Biometrik with Outlined.Fingerprint Icon & Switch Toggle (One UI high contrast styling)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -833,13 +836,27 @@ fun UserEditorForm(
                                         } else {
                                             isBiometricEnabled = false
                                         }
-                                    }
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                    )
                                 )
                             } else {
                                 Switch(
                                     checked = isBiometricEnabled,
                                     onCheckedChange = null,
-                                    enabled = false
+                                    enabled = false,
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                    )
                                 )
                             }
                         }
@@ -847,59 +864,69 @@ fun UserEditorForm(
                 }
             }
 
-            // Flat Borderless Buttons pinned seamlessly at the bottom edge (0-pixel gap with keyboard/screen edge)
+            // High-fidelity flat action buttons pinned seamlessly at the bottom edge (0-pixel gap with keyboard/screen edge) matching AddAssetForm style exactly
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .imePadding()
                     .background(themeBgColor)
-                    .padding(horizontal = 16.dp, vertical = 0.dp)
-                    .height(64.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .height(56.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Cancel button (Flat Borderless style matching background)
-                TextButton(
+                // Cancel button
+                Button(
                     onClick = onDismiss,
+                    shape = RoundedCornerShape(12.dp),
+                    border = null,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = themeBgColor,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight(),
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
+                        .fillMaxHeight()
+                        .testTag("btn_cancel_user")
                 ) {
                     Text(
                         text = "Batal",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyLarge
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
-                // Quick delete option for editing user
+                // Delete option for editing user
                 if (onDelete != null) {
-                    TextButton(
+                    Button(
                         onClick = onDelete,
+                        shape = RoundedCornerShape(12.dp),
+                        border = null,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = themeBgColor,
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight(),
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
+                            .fillMaxHeight()
+                            .testTag("btn_delete_user")
                     ) {
                         Text(
                             text = "Hapus",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyLarge
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
                 // Save button
-                val isFormValid = username.isNotBlank() && name.isNotBlank() && pin.length == 6
-                TextButton(
+                val isFormValid = username.isNotBlank() && name.isNotBlank() && pin.length == 6 && role.isNotBlank() && role != "Role Akses"
+                Button(
                     onClick = {
-                        if (username.isBlank() || name.isBlank() || pin.length != 6) {
-                            Toast.makeText(context, "Harap lengkapi semua isian (PIN harus 6 digit)!", Toast.LENGTH_SHORT).show()
+                        if (username.isBlank() || name.isBlank() || pin.length != 6 || role.isBlank() || role == "Role Akses") {
+                            Toast.makeText(context, "Harap lengkapi semua isian (termasuk memilih Role)!", Toast.LENGTH_SHORT).show()
                         } else {
                             val dbRole = when (role) {
                                 "Kepala Unit" -> "Kepala Unit IT"
@@ -918,19 +945,25 @@ fun UserEditorForm(
                             )
                         }
                     },
+                    shape = RoundedCornerShape(12.dp),
+                    border = null,
                     enabled = isFormValid,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = themeBgColor,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = themeBgColor,
+                        disabledContentColor = if (isDark) Color(0xFF555555) else Color(0xFFB0B0B0)
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight(),
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    )
+                        .fillMaxHeight()
+                        .testTag("btn_save_user")
                 ) {
                     Text(
                         text = "Simpan",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyLarge
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
