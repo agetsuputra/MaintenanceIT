@@ -33,6 +33,12 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Laptop
+import androidx.compose.material.icons.outlined.DesktopWindows
+import androidx.compose.material.icons.outlined.Print
+import androidx.compose.material.icons.outlined.Router
+import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -87,7 +93,7 @@ fun AddAssetForm(
     var type by remember { mutableStateOf("Kategori") }
     var location by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var acquisitionDateLong by remember { mutableStateOf(System.currentTimeMillis()) }
+    var acquisitionDateLong by remember { mutableStateOf<Long?>(null) }
     var purchasePriceInput by remember { mutableStateOf("") }
 
     val context = LocalContext.current
@@ -95,6 +101,15 @@ fun AddAssetForm(
 
     var categoryExpanded by remember { mutableStateOf(false) }
     var datePickerExpanded by remember { mutableStateOf(false) }
+
+    val deviceIcon = when (type) {
+        "Laptop" -> Icons.Outlined.Laptop
+        "PC Desktop" -> Icons.Outlined.DesktopWindows
+        "Printer" -> Icons.Outlined.Print
+        "Network Device" -> Icons.Outlined.Router
+        "Server" -> Icons.Outlined.Dns
+        else -> Icons.Outlined.Devices
+    }
 
     fun formatThousandSeparator(input: String): String {
         val clean = input.filter { it.isDigit() }
@@ -327,11 +342,6 @@ fun AddAssetForm(
                                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                                             shape = RoundedCornerShape(8.dp)
                                         )
-                                        .border(
-                                            width = 1.dp,
-                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-                                            shape = RoundedCornerShape(8.dp)
-                                        )
                                 ) {
                                     displayCategories.forEach { selectionOption ->
                                         val isSelected = type == selectionOption
@@ -342,7 +352,7 @@ fun AddAssetForm(
                                                     type = selectionOption
                                                     categoryExpanded = false
                                                 }
-                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                .padding(start = 26.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
@@ -385,7 +395,7 @@ fun AddAssetForm(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Computer,
+                                    imageVector = deviceIcon,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                     modifier = Modifier.size(18.dp)
@@ -534,7 +544,7 @@ fun AddAssetForm(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                val dateText = simpleDateFormat.format(java.util.Date(acquisitionDateLong))
+                                val dateText = acquisitionDateLong?.let { simpleDateFormat.format(java.util.Date(it)) } ?: ""
                                 TextField(
                                     value = dateText,
                                     onValueChange = {},
@@ -542,7 +552,7 @@ fun AddAssetForm(
                                     enabled = false,
                                     placeholder = {
                                         Text(
-                                            text = "Tanggal Pengadaan Aset *",
+                                            text = "Tanggal Pengadaan",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                             style = MaterialTheme.typography.bodyLarge
                                         )
@@ -567,9 +577,10 @@ fun AddAssetForm(
                             AnimatedVisibility(visible = datePickerExpanded) {
                                 Box(modifier = Modifier.padding(bottom = 12.dp)) {
                                     CompactInlineCalendar(
-                                        selectedDateMillis = acquisitionDateLong,
+                                        selectedDateMillis = acquisitionDateLong ?: System.currentTimeMillis(),
                                         onDateSelected = { selectedTime ->
                                             acquisitionDateLong = selectedTime
+                                            datePickerExpanded = false
                                         },
                                         isDark = isDark
                                     )
@@ -595,12 +606,19 @@ fun AddAssetForm(
                                     .padding(start = 24.dp, end = 24.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.AttachMoney,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                Box(
+                                    modifier = Modifier.size(18.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Rp",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
                                     value = purchasePriceInput,
@@ -610,7 +628,7 @@ fun AddAssetForm(
                                     },
                                     placeholder = {
                                         Text(
-                                            text = "Harga Beli (Rp) - Opsional",
+                                            text = "Harga Beli",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                             style = MaterialTheme.typography.bodyLarge
                                         )
@@ -687,7 +705,7 @@ fun AddAssetForm(
                                     },
                                     placeholder = {
                                         Text(
-                                            text = "Spesifikasi & Keterangan Tambahan",
+                                            text = "Catatan Tambahan",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                             style = MaterialTheme.typography.bodyLarge
                                         )
@@ -738,7 +756,7 @@ fun AddAssetForm(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val isValid = invNum.isNotBlank() && name.isNotBlank() && location.isNotBlank() &&
-                        type != "Kategori" && type.isNotBlank() &&
+                        type != "Kategori" && type.isNotBlank() && acquisitionDateLong != null &&
                         assetList.none { it.inventoryNumber.equals(invNum, ignoreCase = true) }
 
                 // Flat style Cancel button
@@ -782,7 +800,7 @@ fun AddAssetForm(
                             status = "Aktif",
                             description = description,
                             createdAt = System.currentTimeMillis(),
-                            acquisitionDate = acquisitionDateLong,
+                            acquisitionDate = acquisitionDateLong ?: System.currentTimeMillis(),
                             purchasePrice = priceDouble
                         ))
                     },
@@ -835,11 +853,6 @@ fun CompactInlineCalendar(
             .padding(horizontal = 24.dp)
             .background(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(12.dp)
