@@ -626,7 +626,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                 }
  
                 // 2. Floating Buttons (on top of everything else) - Only for Sub-Screens (Add screens) close controls
-                if (currentSubScreen == SubScreen.AddAsset || currentSubScreen == SubScreen.AddRepair || currentSubScreen == SubScreen.AddMaintenance) {
+                if (currentSubScreen == SubScreen.AddRepair || currentSubScreen == SubScreen.AddMaintenance) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -637,23 +637,7 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                     ) {
                         Spacer(modifier = Modifier.size(48.dp))
 
-                        if (currentSubScreen == SubScreen.AddAsset) {
-                            FloatingActionButton(
-                                onClick = {
-                                    currentSubScreen = SubScreen.List
-                                    prefilledInventoryForAddAsset = null
-                                },
-                                shape = CircleShape,
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag("btn_close_add_asset"),
-                                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 1.5.dp, pressedElevation = 3.dp)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = "Kembali ke Dashboard")
-                            }
-                        } else if (currentSubScreen == SubScreen.AddRepair) {
+                        if (currentSubScreen == SubScreen.AddRepair) {
                             FloatingActionButton(
                                 onClick = {
                                     currentSubScreen = SubScreen.List
