@@ -576,7 +576,7 @@ fun CategoryEditorForm(
                         HorizontalDivider(
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                            modifier = Modifier.padding(start = 24.dp)
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp)
                         )
                     }
 
@@ -601,38 +601,6 @@ fun CategoryEditorForm(
                                 .padding(horizontal = 24.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Drag Handle Icon (2 horizontal lines)
-                            DragHandleIcon(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .wrapContentSize(Alignment.Center)
-                                    .pointerInput(index) {
-                                        detectDragGestures(
-                                            onDragStart = { cumulativeDrag = 0f },
-                                            onDragEnd = { cumulativeDrag = 0f },
-                                            onDragCancel = { cumulativeDrag = 0f },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                cumulativeDrag += dragAmount.y
-                                                if (cumulativeDrag < -dragThresholdPx && index > 0) {
-                                                    val temp = items[index]
-                                                    items[index] = items[index - 1]
-                                                    items[index - 1] = temp
-                                                    cumulativeDrag = 0f
-                                                } else if (cumulativeDrag > dragThresholdPx && index < items.size - 1) {
-                                                    val temp = items[index]
-                                                    items[index] = items[index + 1]
-                                                    items[index + 1] = temp
-                                                    cumulativeDrag = 0f
-                                                }
-                                            }
-                                        )
-                                    }
-                            )
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
                             BasicTextField(
                                 value = items[index],
                                 onValueChange = { items[index] = it },
@@ -645,7 +613,7 @@ fun CategoryEditorForm(
                                     ) {
                                         if (items[index].isEmpty()) {
                                             Text(
-                                                "Masukkan poin panduan...",
+                                                "Input item pengecekan",
                                                 style = MaterialTheme.typography.bodyLarge,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                             )
@@ -675,12 +643,42 @@ fun CategoryEditorForm(
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            DragHandleIcon(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .pointerInput(index) {
+                                        detectDragGestures(
+                                            onDragStart = { cumulativeDrag = 0f },
+                                            onDragEnd = { cumulativeDrag = 0f },
+                                            onDragCancel = { cumulativeDrag = 0f },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                cumulativeDrag += dragAmount.y
+                                                if (cumulativeDrag < -dragThresholdPx && index > 0) {
+                                                    val temp = items[index]
+                                                    items[index] = items[index - 1]
+                                                    items[index - 1] = temp
+                                                    cumulativeDrag = 0f
+                                                } else if (cumulativeDrag > dragThresholdPx && index < items.size - 1) {
+                                                    val temp = items[index]
+                                                    items[index] = items[index + 1]
+                                                    items[index + 1] = temp
+                                                    cumulativeDrag = 0f
+                                                }
+                                            }
+                                        )
+                                    }
+                            )
                         }
 
                         HorizontalDivider(
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                            modifier = Modifier.padding(start = 24.dp)
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp)
                         )
                     }
 
@@ -821,19 +819,25 @@ fun CategoryEditorForm(
 @Composable
 fun DragHandleIcon(modifier: Modifier = Modifier, color: Color) {
     Canvas(modifier = modifier) {
-        val y1 = size.height * 0.38f
-        val y2 = size.height * 0.62f
+        val lineLength = 18.dp.toPx()
+        val spacing = 6.dp.toPx()
+        val xStart = (size.width - lineLength) / 2
+        val xEnd = xStart + lineLength
+        
+        val y1 = (size.height - spacing) / 2
+        val y2 = y1 + spacing
         val strokePx = 2.dp.toPx()
+        
         drawLine(
             color = color,
-            start = Offset(0f, y1),
-            end = Offset(size.width, y1),
+            start = Offset(xStart, y1),
+            end = Offset(xEnd, y1),
             strokeWidth = strokePx
         )
         drawLine(
             color = color,
-            start = Offset(0f, y2),
-            end = Offset(size.width, y2),
+            start = Offset(xStart, y2),
+            end = Offset(xEnd, y2),
             strokeWidth = strokePx
         )
     }
