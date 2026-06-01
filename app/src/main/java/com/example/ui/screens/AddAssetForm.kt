@@ -72,7 +72,7 @@ fun AddAssetForm(
 
     var invNum by remember { mutableStateOf(initialInventoryNumber ?: "") }
     var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(displayCategories.firstOrNull() ?: "Laptop") }
+    var type by remember { mutableStateOf("Kategori") }
     var location by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var acquisitionDateLong by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -110,40 +110,30 @@ fun AddAssetForm(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(themeBgColor)
             .testTag("add_asset_form")
     ) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                top = statusBarHeight + 84.dp,
+                top = statusBarHeight,
                 bottom = slotMetrics.anchorHeight + 16.dp,
-                start = 16.dp,
-                end = 16.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                start = 0.dp,
+                end = 0.dp
+            )
         ) {
-            item {
-                Text(
-                    "Pendaftaran Aset Inventaris Baru",
-                    fontWeight = FontWeight.ExtraBold,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    "Masukkan data detail perangkat keras yang dikelola oleh tim IT support.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("add_asset_card"),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(
+                        topStart = 0.dp,
+                        topEnd = 0.dp,
+                        bottomStart = 16.dp,
+                        bottomEnd = 16.dp
+                    ),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
@@ -154,53 +144,51 @@ fun AddAssetForm(
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
                     ) {
-                        // Header Row: Nomor Inventaris & Scan QR
+                        // Row 1: Nomor Inventaris & Scan QR (Starts at 0.dp so internal text field starts at 16.dp)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(start = 0.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                TextField(
-                                    value = invNum,
-                                    onValueChange = { invNum = capitalizeFirstLetter(it.trim().uppercase(Locale.getDefault())) },
-                                    placeholder = {
-                                        Text(
-                                            text = "Nomor Inventaris *",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                        )
-                                    },
-                                    textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    singleLine = true,
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent,
-                                        disabledContainerColor = Color.Transparent,
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                        disabledIndicatorColor = Color.Transparent
-                                    ),
-                                    keyboardOptions = KeyboardOptions(
-                                        imeAction = ImeAction.Next
-                                    ),
-                                    keyboardActions = KeyboardActions(
-                                        onNext = { nameFocus.requestFocus() }
-                                    ),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .focusRequester(invFocus)
-                                        .onFocusChanged { focusState ->
-                                            if (focusState.isFocused) {
-                                                scope.launch {
-                                                    listState.animateScrollToItem(1)
-                                                }
+                            TextField(
+                                value = invNum,
+                                onValueChange = { invNum = capitalizeFirstLetter(it.trim().uppercase(Locale.getDefault())) },
+                                placeholder = {
+                                    Text(
+                                        text = "Nomor Inventaris *",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                },
+                                textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                singleLine = true,
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent
+                                ),
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { nameFocus.requestFocus() }
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(invFocus)
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused) {
+                                            scope.launch {
+                                                listState.animateScrollToItem(0)
                                             }
                                         }
-                                        .testTag("tf_inv_number")
-                                )
-                            }
+                                    }
+                                    .testTag("tf_inv_number")
+                            )
                             
                             IconButton(
                                 onClick = {
@@ -230,16 +218,99 @@ fun AddAssetForm(
                         }
 
                         HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp),
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                         )
 
-                        // Row 2: Nama Perangkat
+                        // Row 2: Kategori Perangkat (Tepat di bawah Nomor Inventaris sesuai spesifikasi)
+                        ExposedDropdownMenuBox(
+                            expanded = categoryExpanded,
+                            onExpandedChange = { categoryExpanded = !categoryExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        categoryExpanded = !categoryExpanded
+                                        scope.launch {
+                                            listState.animateScrollToItem(0)
+                                        }
+                                    }
+                                    .padding(start = 16.dp, end = 0.dp)
+                                    .testTag("tf_asset_type"),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Category,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                TextField(
+                                    value = if (type == "Kategori") "" else type,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    placeholder = {
+                                        Text(
+                                            text = "Kategori",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = if (categoryExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        disabledContainerColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                        disabledIndicatorColor = Color.Transparent,
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            ExposedDropdownMenu(
+                                expanded = categoryExpanded,
+                                onDismissRequest = { categoryExpanded = false }
+                            ) {
+                                displayCategories.forEach { selectionOption ->
+                                    DropdownMenuItem(
+                                        text = { Text(selectionOption) },
+                                        onClick = {
+                                            type = selectionOption
+                                            categoryExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        )
+
+                        // Row 3: Nama Perangkat
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(start = 16.dp, end = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -248,7 +319,6 @@ fun AddAssetForm(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
                             TextField(
                                 value = name,
                                 onValueChange = { name = capitalizeFirstLetter(it) },
@@ -280,7 +350,7 @@ fun AddAssetForm(
                                     .onFocusChanged { focusState ->
                                         if (focusState.isFocused) {
                                             scope.launch {
-                                                listState.animateScrollToItem(1)
+                                                listState.animateScrollToItem(0)
                                             }
                                         }
                                     }
@@ -289,78 +359,9 @@ fun AddAssetForm(
                         }
 
                         HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-                        )
-
-                        // Row 3: Kategori Perangkat
-                        ExposedDropdownMenuBox(
-                            expanded = categoryExpanded,
-                            onExpandedChange = { categoryExpanded = !categoryExpanded },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        categoryExpanded = !categoryExpanded
-                                        scope.launch {
-                                            listState.animateScrollToItem(1)
-                                        }
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                                    .testTag("tf_asset_type"),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Category,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Box(modifier = Modifier.weight(1f)) {
-                                    if (type.isEmpty()) {
-                                        Text(
-                                            text = "Kategori Perangkat",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    } else {
-                                        Text(
-                                            text = type,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-                                }
-                                Icon(
-                                    imageVector = if (categoryExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            ExposedDropdownMenu(
-                                expanded = categoryExpanded,
-                                onDismissRequest = { categoryExpanded = false }
-                            ) {
-                                displayCategories.forEach { selectionOption ->
-                                    DropdownMenuItem(
-                                        text = { Text(selectionOption) },
-                                        onClick = {
-                                            type = selectionOption
-                                            categoryExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp),
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                         )
@@ -369,7 +370,7 @@ fun AddAssetForm(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(start = 16.dp, end = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -378,7 +379,6 @@ fun AddAssetForm(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
                             TextField(
                                 value = location,
                                 onValueChange = { location = capitalizeFirstLetter(it) },
@@ -410,7 +410,7 @@ fun AddAssetForm(
                                     .onFocusChanged { focusState ->
                                         if (focusState.isFocused) {
                                             scope.launch {
-                                                listState.animateScrollToItem(1)
+                                                listState.animateScrollToItem(0)
                                             }
                                         }
                                     }
@@ -419,7 +419,9 @@ fun AddAssetForm(
                         }
 
                         HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp),
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                         )
@@ -453,8 +455,7 @@ fun AddAssetForm(
                                 .clickable {
                                     datePickerDialog.show()
                                 }
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                                .testTag("tf_asset_acquisition_date"),
+                                .padding(start = 16.dp, end = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -463,27 +464,38 @@ fun AddAssetForm(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Box(modifier = Modifier.weight(1f)) {
-                                val dateText = simpleDateFormat.format(java.util.Date(acquisitionDateLong))
-                                if (dateText.isEmpty()) {
+                            val dateText = simpleDateFormat.format(java.util.Date(acquisitionDateLong))
+                            TextField(
+                                value = dateText,
+                                onValueChange = {},
+                                readOnly = true,
+                                enabled = false,
+                                placeholder = {
                                     Text(
                                         text = "Tanggal Pengadaan Aset *",
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
-                                } else {
-                                    Text(
-                                        text = dateText,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-                            }
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent,
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("tf_asset_acquisition_date")
+                            )
                         }
 
                         HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp),
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                         )
@@ -492,7 +504,7 @@ fun AddAssetForm(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(start = 16.dp, end = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -501,7 +513,6 @@ fun AddAssetForm(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
                             TextField(
                                 value = purchasePriceInput,
                                 onValueChange = { input ->
@@ -537,7 +548,7 @@ fun AddAssetForm(
                                     .onFocusChanged { focusState ->
                                         if (focusState.isFocused) {
                                             scope.launch {
-                                                listState.animateScrollToItem(1)
+                                                listState.animateScrollToItem(0)
                                             }
                                         }
                                     }
@@ -546,16 +557,18 @@ fun AddAssetForm(
                         }
 
                         HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp),
                             thickness = 0.5.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                         )
 
-                        // Row 7: Deskripsi / Spesifikasi
+                        // Row 7: Deskripsi / Spesifikasi (TextArea / Multiline murni)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(start = 16.dp, end = 16.dp),
                             verticalAlignment = Alignment.Top
                         ) {
                             Icon(
@@ -566,7 +579,6 @@ fun AddAssetForm(
                                     .padding(top = 12.dp)
                                     .size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
                             TextField(
                                 value = description,
                                 onValueChange = { description = capitalizeFirstLetter(it) },
@@ -577,12 +589,10 @@ fun AddAssetForm(
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                 },
-                                maxLines = 4,
+                                singleLine = false,
                                 keyboardOptions = KeyboardOptions(
-                                    imeAction = ImeAction.Done
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onDone = { keyboardController?.hide() }
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Default
                                 ),
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
@@ -594,12 +604,12 @@ fun AddAssetForm(
                                 ),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(110.dp)
+                                    .heightIn(min = 110.dp)
                                     .focusRequester(descFocus)
                                     .onFocusChanged { focusState ->
                                         if (focusState.isFocused) {
                                             scope.launch {
-                                                listState.animateScrollToItem(1)
+                                                listState.animateScrollToItem(0)
                                             }
                                         }
                                     }
@@ -611,24 +621,7 @@ fun AddAssetForm(
             }
         }
 
-        // Top Gradient (starts from floating profile area and fades upward)
-        com.example.ui.components.TopFadeOverlay(
-            height = statusBarHeight + 72.dp,
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
-
-        // Bottom Gradient Overlay (anchored directly to the top edge of the action buttons)
-        val bottomEdge = (slotMetrics.bottomOffset - 16.dp).coerceAtLeast(0.dp)
-        val gradientHeight = 56.dp + 16.dp
-        com.example.ui.components.BottomFadeOverlay(
-            height = gradientHeight,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = bottomEdge)
-        )
-
         // Floating Row of cancel and save buttons following the keyboard
-        // Hilangkan card induk (no background, no border, no padding/shape decoration card)
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -640,9 +633,10 @@ fun AddAssetForm(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val isValid = invNum.isNotBlank() && name.isNotBlank() && location.isNotBlank() &&
+                    type != "Kategori" && type.isNotBlank() &&
                     assetList.none { it.inventoryNumber.equals(invNum, ignoreCase = true) }
 
-            // Tombol Batal: Berwarna solid non-transparan
+            // Tombol Batal: flat borderless
             Button(
                 onClick = {
                     keyboardController?.hide()
@@ -650,7 +644,7 @@ fun AddAssetForm(
                     onCancel()
                 },
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, if (isDark) Color(0xFF374151) else Color(0xFFD1D5DB)),
+                border = null,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = themeBgColor,
                     contentColor = MaterialTheme.colorScheme.primary
@@ -661,10 +655,10 @@ fun AddAssetForm(
                     .height(56.dp)
                     .testTag("btn_cancel_asset")
             ) {
-                Text("Batal")
+                Text("Batal", fontWeight = FontWeight.Bold)
             }
 
-            // Tombol Simpan: Berwarna solid non-transparan
+            // Tombol Simpan: flat borderless
             Button(
                 onClick = {
                     keyboardController?.hide()
@@ -684,20 +678,21 @@ fun AddAssetForm(
                     ))
                 },
                 shape = RoundedCornerShape(12.dp),
+                border = null,
                 enabled = isValid,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = if (isDark) Color(0xFF333333) else Color(0xFFE2E8F0),
-                    disabledContentColor = if (isDark) Color(0xFF757575) else Color(0xFF94A3B8)
+                    containerColor = themeBgColor,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = themeBgColor,
+                    disabledContentColor = if (isDark) Color(0xFF555555) else Color(0xFFB0B0B0)
                 ),
-                elevation = null,
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
                 modifier = Modifier
                     .weight(1f)
                     .height(56.dp)
                     .testTag("btn_save_asset")
             ) {
-                Text("Simpan")
+                Text("Simpan", fontWeight = FontWeight.Bold)
             }
         }
     }
