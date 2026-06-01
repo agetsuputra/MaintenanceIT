@@ -870,7 +870,7 @@ fun UserEditorForm(
                     .fillMaxWidth()
                     .imePadding()
                     .background(themeBgColor)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp)
                     .height(56.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically

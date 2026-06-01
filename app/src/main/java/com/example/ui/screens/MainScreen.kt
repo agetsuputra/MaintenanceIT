@@ -517,7 +517,21 @@ fun MainScreen(viewModel: ITViewModel, modifier: Modifier = Modifier) {
                                                 viewModel.deleteCategory(category) {
                                                     Toast.makeText(context, "Kategori berhasil dihapus!", Toast.LENGTH_SHORT).show()
                                                 }
-                                            }
+                                            },
+                                            onScrollAtTopChanged = { isDashboardAtTop = it },
+                                            onTabChange = { tab ->
+                                                currentTab = tab
+                                                currentSubScreen = SubScreen.List
+                                            },
+                                            onLogout = {
+                                                currentUsername = ""
+                                                currentUserRole = ""
+                                                currentTab = AppTab.Dashboard
+                                                currentSubScreen = SubScreen.List
+                                            },
+                                            currentUsername = currentUsername,
+                                            currentUserRole = currentUserRole,
+                                            searchBarTopDp = slotMetrics.anchorHeight
                                         )
                                     }
                                     else -> {
