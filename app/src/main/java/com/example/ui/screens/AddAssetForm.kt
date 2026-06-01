@@ -160,8 +160,7 @@ fun AddAssetForm(
                 ),
                 colors = CardDefaults.cardColors(
                     containerColor = surfaceColor
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                )
             ) {
                 LazyColumn(
                     state = listState,
@@ -178,16 +177,9 @@ fun AddAssetForm(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 4.dp),
+                                    .padding(start = 8.dp, end = 24.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.QrCodeScanner,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
                                     value = invNum,
                                     onValueChange = { invNum = capitalizeFirstLetter(it.trim().uppercase(Locale.getDefault())) },
@@ -280,7 +272,7 @@ fun AddAssetForm(
                                             listState.animateScrollToItem(1)
                                         }
                                     }
-                                    .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 4.dp)
+                                    .padding(start = 24.dp, end = 24.dp)
                                     .testTag("tf_asset_type"),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -288,7 +280,7 @@ fun AddAssetForm(
                                     imageVector = Icons.Outlined.Category,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
@@ -396,7 +388,7 @@ fun AddAssetForm(
                                     imageVector = Icons.Outlined.Computer,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
@@ -464,7 +456,7 @@ fun AddAssetForm(
                                     imageVector = Icons.Outlined.LocationOn,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
@@ -539,7 +531,7 @@ fun AddAssetForm(
                                     imageVector = Icons.Outlined.CalendarToday,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 val dateText = simpleDateFormat.format(java.util.Date(acquisitionDateLong))
@@ -607,7 +599,7 @@ fun AddAssetForm(
                                     imageVector = Icons.Outlined.AttachMoney,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
@@ -681,7 +673,7 @@ fun AddAssetForm(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                     modifier = Modifier
                                         .padding(top = 12.dp)
-                                        .size(20.dp)
+                                        .size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
@@ -739,7 +731,7 @@ fun AddAssetForm(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = slotMetrics.bottomOffset)
+                    .imePadding()
                     .padding(horizontal = 16.dp, vertical = 0.dp)
                     .height(56.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
