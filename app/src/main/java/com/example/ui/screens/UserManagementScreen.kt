@@ -140,7 +140,7 @@ fun UserManagementScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(boxControlDefaultTop + 56.dp - 14.dp))
+                Spacer(modifier = Modifier.height(boxControlDefaultTop + 56.dp + 14.dp))
             }
 
             if (users.isEmpty()) {
@@ -180,35 +180,43 @@ fun UserManagementScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .height(76.dp)
                                 .clickable { editingUser = user }
                                 .testTag("user_card_${user.username}"),
-                            colors = CardDefaults.cardColors(containerColor = cardColor),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(24.dp)
                         ) {
                             Row(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.Center
+                                ) {
                                     Text(
                                         text = user.name,
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        fontWeight = FontWeight.Normal,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
-                                    Spacer(Modifier.height(4.dp))
+                                    Spacer(Modifier.height(2.dp))
                                     Text(
                                         text = "${user.username} \u2022 $displayRole",
-                                        fontWeight = FontWeight.Normal,
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        fontWeight = FontWeight.Light,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
-
+ 
                                 if (user.isBiometricEnabled) {
                                     Icon(
                                         imageVector = Icons.Outlined.Fingerprint,
@@ -225,14 +233,14 @@ fun UserManagementScreen(
 
             item {
                 val keyboardHeight = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-                val firstSpacerHeight = boxControlDefaultTop + 56.dp - 14.dp
+                val firstSpacerHeight = boxControlDefaultTop + 56.dp + 14.dp
                 val N = users.size
                 val targetTotalHeight = screenHeight + maxScrollOffset
                 val nativeBottomSpacer = if (N == 0) {
                     val emptyStateHeight = 140.dp
                     targetTotalHeight - firstSpacerHeight - emptyStateHeight - 28.dp
                 } else {
-                    targetTotalHeight - firstSpacerHeight - (N * 72).dp - ((N + 1) * 14).dp
+                    targetTotalHeight - firstSpacerHeight - (N * 76).dp - ((N + 1) * 14).dp
                 }
                 
                 val minBottomSpacer = (searchBarTopDp + 14.dp + keyboardHeight)
@@ -277,7 +285,7 @@ fun UserManagementScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                 ) {
-                    val dynamicTitle = "${users.size} user terdaftar"
+                    val dynamicTitle = "${users.size} user"
 
                     Text(
                         text = dynamicTitle,
@@ -313,10 +321,10 @@ fun UserManagementScreen(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .graphicsLayer { alpha = step2Alpha }
-                    .padding(start = 36.dp)
+                    .padding(start = 32.dp)
                     .align(Alignment.CenterStart)
             )
-
+ 
             // Right side: Quick actions aligned CenterVertically
             Row(
                 modifier = Modifier
@@ -332,7 +340,7 @@ fun UserManagementScreen(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Tambah User",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
