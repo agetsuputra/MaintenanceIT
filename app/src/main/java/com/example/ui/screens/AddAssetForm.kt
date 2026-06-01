@@ -15,6 +15,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -132,303 +139,475 @@ fun AddAssetForm(
             }
 
             item {
-                OutlinedTextField(
-                    value = invNum,
-                    onValueChange = { invNum = capitalizeFirstLetter(it.trim().uppercase(Locale.getDefault())) },
-                    label = { Text("Nomor Inventaris Aset *") },
-                    placeholder = { Text("Contoh: INV-LP-025") },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = {
-                                onOpenScanner { code ->
-                                    invNum = capitalizeFirstLetter(code.trim().uppercase(Locale.getDefault()))
-                                }
-                            },
-                            modifier = Modifier.testTag("btn_inv_number_scan")
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("add_asset_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        // Header Row: Nomor Inventaris & Scan QR
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.QrCodeScanner,
-                                contentDescription = "Scan QR/Barcode",
-                                tint = MaterialTheme.colorScheme.primary
+                            Box(modifier = Modifier.weight(1f)) {
+                                TextField(
+                                    value = invNum,
+                                    onValueChange = { invNum = capitalizeFirstLetter(it.trim().uppercase(Locale.getDefault())) },
+                                    placeholder = {
+                                        Text(
+                                            text = "Nomor Inventaris *",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        )
+                                    },
+                                    textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    singleLine = true,
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        disabledContainerColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                        disabledIndicatorColor = Color.Transparent
+                                    ),
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Next
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onNext = { nameFocus.requestFocus() }
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(invFocus)
+                                        .onFocusChanged { focusState ->
+                                            if (focusState.isFocused) {
+                                                scope.launch {
+                                                    listState.animateScrollToItem(1)
+                                                }
+                                            }
+                                        }
+                                        .testTag("tf_inv_number")
+                                )
+                            }
+                            
+                            IconButton(
+                                onClick = {
+                                    onOpenScanner { code ->
+                                        invNum = capitalizeFirstLetter(code.trim().uppercase(Locale.getDefault()))
+                                    }
+                                },
+                                modifier = Modifier
+                                    .testTag("btn_inv_number_scan")
+                                    .size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = "Scan QR/Barcode",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        if (assetList.any { it.inventoryNumber.equals(invNum, ignoreCase = true) }) {
+                            Text(
+                                "Nomor inventaris ini sudah terdaftar!",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
                             )
                         }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { nameFocus.requestFocus() }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(invFocus)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                scope.launch {
-                                    listState.animateScrollToItem(1)
+
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        )
+
+                        // Row 2: Nama Perangkat
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Computer,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            TextField(
+                                value = name,
+                                onValueChange = { name = capitalizeFirstLetter(it) },
+                                placeholder = {
+                                    Text(
+                                        text = "Nama Perangkat *",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { locationFocus.requestFocus() }
+                                ),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(nameFocus)
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused) {
+                                            scope.launch {
+                                                listState.animateScrollToItem(1)
+                                            }
+                                        }
+                                    }
+                                    .testTag("tf_asset_name")
+                            )
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        )
+
+                        // Row 3: Kategori Perangkat
+                        ExposedDropdownMenuBox(
+                            expanded = categoryExpanded,
+                            onExpandedChange = { categoryExpanded = !categoryExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        categoryExpanded = !categoryExpanded
+                                        scope.launch {
+                                            listState.animateScrollToItem(1)
+                                        }
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .testTag("tf_asset_type"),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Category,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Box(modifier = Modifier.weight(1f)) {
+                                    if (type.isEmpty()) {
+                                        Text(
+                                            text = "Kategori Perangkat",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    } else {
+                                        Text(
+                                            text = type,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = if (categoryExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            ExposedDropdownMenu(
+                                expanded = categoryExpanded,
+                                onDismissRequest = { categoryExpanded = false }
+                            ) {
+                                displayCategories.forEach { selectionOption ->
+                                    DropdownMenuItem(
+                                        text = { Text(selectionOption) },
+                                        onClick = {
+                                            type = selectionOption
+                                            categoryExpanded = false
+                                        }
+                                    )
                                 }
                             }
                         }
-                        .testTag("tf_inv_number"),
-                    isError = assetList.any { it.inventoryNumber.equals(invNum, ignoreCase = true) }
-                )
-                if (assetList.any { it.inventoryNumber.equals(invNum, ignoreCase = true) }) {
-                    Text(
-                        "Nomor inventaris ini sudah terdaftar!",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-                    )
-                }
-            }
 
-            item {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = capitalizeFirstLetter(it) },
-                    label = { Text("Nama Perangkat *") },
-                    placeholder = { Text("Contoh: iMac Pro Retina 2024") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { locationFocus.requestFocus() }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(nameFocus)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                scope.launch {
-                                    listState.animateScrollToItem(2)
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        )
+
+                        // Row 4: Lokasi Perangkat
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            TextField(
+                                value = location,
+                                onValueChange = { location = capitalizeFirstLetter(it) },
+                                placeholder = {
+                                    Text(
+                                        text = "Lokasi Perangkat *",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { priceFocus.requestFocus() }
+                                ),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(locationFocus)
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused) {
+                                            scope.launch {
+                                                listState.animateScrollToItem(1)
+                                            }
+                                        }
+                                    }
+                                    .testTag("tf_asset_location")
+                            )
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        )
+
+                        // Row 5: Tanggal Pengadaan
+                        val calendar = remember(acquisitionDateLong) { Calendar.getInstance().apply { timeInMillis = acquisitionDateLong } }
+                        val startYear = calendar.get(Calendar.YEAR)
+                        val startMonth = calendar.get(Calendar.MONTH)
+                        val startDay = calendar.get(Calendar.DAY_OF_MONTH)
+
+                        val datePickerDialog = remember(context, startYear, startMonth, startDay) {
+                            DatePickerDialog(
+                                context,
+                                { _, selectedYear, selectedMonth, selectedDay ->
+                                    val selectedCal = Calendar.getInstance().apply {
+                                        set(Calendar.YEAR, selectedYear)
+                                        set(Calendar.MONTH, selectedMonth)
+                                        set(Calendar.DAY_OF_MONTH, selectedDay)
+                                    }
+                                    acquisitionDateLong = selectedCal.timeInMillis
+                                },
+                                startYear,
+                                startMonth,
+                                startDay
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    datePickerDialog.show()
+                                }
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .testTag("tf_asset_acquisition_date"),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Box(modifier = Modifier.weight(1f)) {
+                                val dateText = simpleDateFormat.format(java.util.Date(acquisitionDateLong))
+                                if (dateText.isEmpty()) {
+                                    Text(
+                                        text = "Tanggal Pengadaan Aset *",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                } else {
+                                    Text(
+                                        text = dateText,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
                                 }
                             }
                         }
-                        .testTag("tf_asset_name")
-                )
-            }
 
-            item {
-                ExposedDropdownMenuBox(
-                    expanded = categoryExpanded,
-                    onExpandedChange = { categoryExpanded = !categoryExpanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = type,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Kategori Perangkat") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                        ),
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                            .clickable {
-                                categoryExpanded = !categoryExpanded
-                                scope.launch {
-                                    listState.animateScrollToItem(3)
-                                }
-                            }
-                            .testTag("tf_asset_type")
-                    )
-                    ExposedDropdownMenu(
-                        expanded = categoryExpanded,
-                        onDismissRequest = { categoryExpanded = false }
-                    ) {
-                        displayCategories.forEach { selectionOption ->
-                            DropdownMenuItem(
-                                text = { Text(selectionOption) },
-                                onClick = {
-                                    type = selectionOption
-                                    categoryExpanded = false
-                                }
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        )
+
+                        // Row 6: Harga Beli
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AttachMoney,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            TextField(
+                                value = purchasePriceInput,
+                                onValueChange = { input ->
+                                    val clean = input.filter { it.isDigit() }
+                                    purchasePriceInput = formatThousandSeparator(clean)
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = "Harga Beli (Rp) - Opsional",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { descFocus.requestFocus() }
+                                ),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(priceFocus)
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused) {
+                                            scope.launch {
+                                                listState.animateScrollToItem(1)
+                                            }
+                                        }
+                                    }
+                                    .testTag("tf_asset_purchase_price")
+                            )
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        )
+
+                        // Row 7: Deskripsi / Spesifikasi
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier
+                                    .padding(top = 12.dp)
+                                    .size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            TextField(
+                                value = description,
+                                onValueChange = { description = capitalizeFirstLetter(it) },
+                                placeholder = {
+                                    Text(
+                                        text = "Spesifikasi & Keterangan Tambahan",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                },
+                                maxLines = 4,
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { keyboardController?.hide() }
+                                ),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(110.dp)
+                                    .focusRequester(descFocus)
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused) {
+                                            scope.launch {
+                                                listState.animateScrollToItem(1)
+                                            }
+                                        }
+                                    }
+                                    .testTag("tf_asset_desc")
                             )
                         }
                     }
                 }
-            }
-
-            item {
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = capitalizeFirstLetter(it) },
-                    label = { Text("Lokasi Perangkat *") },
-                    placeholder = { Text("Contoh: Ruang Meeting Lt. 2") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { priceFocus.requestFocus() }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(locationFocus)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                scope.launch {
-                                    listState.animateScrollToItem(4)
-                                }
-                            }
-                        }
-                        .testTag("tf_asset_location")
-                )
-            }
-
-            item {
-                val calendar = remember(acquisitionDateLong) { Calendar.getInstance().apply { timeInMillis = acquisitionDateLong } }
-                val startYear = calendar.get(Calendar.YEAR)
-                val startMonth = calendar.get(Calendar.MONTH)
-                val startDay = calendar.get(Calendar.DAY_OF_MONTH)
-
-                val datePickerDialog = remember(context, startYear, startMonth, startDay) {
-                    DatePickerDialog(
-                        context,
-                        { _, selectedYear, selectedMonth, selectedDay ->
-                            val selectedCal = Calendar.getInstance().apply {
-                                set(Calendar.YEAR, selectedYear)
-                                set(Calendar.MONTH, selectedMonth)
-                                set(Calendar.DAY_OF_MONTH, selectedDay)
-                            }
-                            acquisitionDateLong = selectedCal.timeInMillis
-                        },
-                        startYear,
-                        startMonth,
-                        startDay
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            scope.launch {
-                                listState.animateScrollToItem(5)
-                            }
-                            datePickerDialog.show()
-                        }
-                ) {
-                    OutlinedTextField(
-                        value = simpleDateFormat.format(java.util.Date(acquisitionDateLong)),
-                        onValueChange = {},
-                        readOnly = true,
-                        enabled = false,
-                        label = { Text("Tanggal Pengadaan Aset *") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.CalendarToday,
-                                contentDescription = "Pilih Tanggal Pengadaan",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("tf_asset_acquisition_date"),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledLeadingIconColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                }
-            }
-
-            item {
-                OutlinedTextField(
-                    value = purchasePriceInput,
-                    onValueChange = { input ->
-                        val clean = input.filter { it.isDigit() }
-                        purchasePriceInput = formatThousandSeparator(clean)
-                    },
-                    label = { Text("Harga Beli (Rp) - Opsional") },
-                    placeholder = { Text("Contoh: 1.250.000") },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { descFocus.requestFocus() }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(priceFocus)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                scope.launch {
-                                    listState.animateScrollToItem(6)
-                                }
-                            }
-                        }
-                        .testTag("tf_asset_purchase_price")
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = capitalizeFirstLetter(it) },
-                    label = { Text("Spesifikasi & Keterangan Tambahan") },
-                    placeholder = { Text("Prosesor, RAM, Penyimpanan, dll...") },
-                    maxLines = 4,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = { keyboardController?.hide() }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .focusRequester(descFocus)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                scope.launch {
-                                    listState.animateScrollToItem(7)
-                                }
-                            }
-                        }
-                        .testTag("tf_asset_desc")
-                )
             }
         }
 
