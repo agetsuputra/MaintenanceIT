@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.app.DatePickerDialog
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,16 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,7 +58,7 @@ import java.util.Calendar
 import java.util.Locale
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAssetForm(
     onSave: (Asset) -> Unit,
@@ -83,6 +94,7 @@ fun AddAssetForm(
     val simpleDateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
     var categoryExpanded by remember { mutableStateOf(false) }
+    var datePickerExpanded by remember { mutableStateOf(false) }
 
     fun formatThousandSeparator(input: String): String {
         val clean = input.filter { it.isDigit() }
@@ -156,19 +168,26 @@ fun AddAssetForm(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
+                    // Row 1: Nomor Inventaris & Scan QR
                     item {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp)
+                                .padding(vertical = 4.dp)
                         ) {
-                            // Row 1: Nomor Inventaris & Scan QR (Starts at 8.dp padding so internal text field starts at 24.dp)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 8.dp, end = 24.dp, top = 4.dp, bottom = 4.dp),
+                                    .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.QrCodeScanner,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
                                     value = invNum,
                                     onValueChange = { invNum = capitalizeFirstLetter(it.trim().uppercase(Locale.getDefault())) },
@@ -245,79 +264,111 @@ fun AddAssetForm(
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                             )
+                        }
+                    }
 
-                            // Row 2: Kategori Perangkat (Tepat di bawah Nomor Inventaris sesuai spesifikasi)
-                            ExposedDropdownMenuBox(
-                                expanded = categoryExpanded,
-                                onExpandedChange = { categoryExpanded = !categoryExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            categoryExpanded = !categoryExpanded
-                                            scope.launch {
-                                                listState.animateScrollToItem(0)
-                                            }
+                    // Row 2: Kategori Perangkat (Tepat di bawah Nomor Inventaris sesuai spesifikasi)
+                    item {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        categoryExpanded = !categoryExpanded
+                                        datePickerExpanded = false
+                                        scope.launch {
+                                            listState.animateScrollToItem(1)
                                         }
-                                        .padding(start = 24.dp, end = 24.dp)
-                                        .testTag("tf_asset_type"),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Category,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    TextField(
-                                        value = if (type == "Kategori") "" else type,
-                                        onValueChange = {},
-                                        readOnly = true,
-                                        placeholder = {
-                                            Text(
-                                                text = "Kategori",
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                                style = MaterialTheme.typography.bodyLarge
-                                            )
-                                        },
-                                        trailingIcon = {
-                                            Icon(
-                                                imageVector = if (categoryExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        },
-                                        colors = TextFieldDefaults.colors(
-                                            focusedContainerColor = Color.Transparent,
-                                            unfocusedContainerColor = Color.Transparent,
-                                            disabledContainerColor = Color.Transparent,
-                                            focusedIndicatorColor = Color.Transparent,
-                                            unfocusedIndicatorColor = Color.Transparent,
-                                            disabledIndicatorColor = Color.Transparent,
-                                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                            disabledTextColor = MaterialTheme.colorScheme.onSurface
-                                        ),
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                                ExposedDropdownMenu(
-                                    expanded = categoryExpanded,
-                                    onDismissRequest = { categoryExpanded = false }
+                                    }
+                                    .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 4.dp)
+                                    .testTag("tf_asset_type"),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Category,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                TextField(
+                                    value = if (type == "Kategori") "" else type,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    enabled = false,
+                                    placeholder = {
+                                        Text(
+                                            text = "Kategori",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = if (categoryExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        disabledContainerColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                        disabledIndicatorColor = Color.Transparent,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            AnimatedVisibility(visible = categoryExpanded) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 12.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .border(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
                                 ) {
                                     displayCategories.forEach { selectionOption ->
-                                        DropdownMenuItem(
-                                            text = { Text(selectionOption) },
-                                            onClick = {
-                                                type = selectionOption
-                                                categoryExpanded = false
+                                        val isSelected = type == selectionOption
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    type = selectionOption
+                                                    categoryExpanded = false
+                                                }
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = selectionOption,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            if (isSelected) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "Selected",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
                                             }
-                                        )
+                                        }
                                     }
                                 }
                             }
@@ -329,8 +380,12 @@ fun AddAssetForm(
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                             )
+                        }
+                    }
 
-                            // Row 3: Nama Perangkat
+                    // Row 3: Nama Perangkat
+                    item {
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -338,10 +393,10 @@ fun AddAssetForm(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Computer,
+                                    imageVector = Icons.Outlined.Computer,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
@@ -378,7 +433,7 @@ fun AddAssetForm(
                                         .onFocusChanged { focusState ->
                                             if (focusState.isFocused) {
                                                 scope.launch {
-                                                    listState.animateScrollToItem(0)
+                                                    listState.animateScrollToItem(2)
                                                 }
                                             }
                                         }
@@ -393,8 +448,12 @@ fun AddAssetForm(
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                             )
+                        }
+                    }
 
-                            // Row 4: Lokasi Perangkat
+                    // Row 4: Lokasi Perangkat
+                    item {
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -402,10 +461,10 @@ fun AddAssetForm(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.LocationOn,
+                                    imageVector = Icons.Outlined.LocationOn,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
@@ -442,7 +501,7 @@ fun AddAssetForm(
                                         .onFocusChanged { focusState ->
                                             if (focusState.isFocused) {
                                                 scope.launch {
-                                                    listState.animateScrollToItem(0)
+                                                    listState.animateScrollToItem(3)
                                                 }
                                             }
                                         }
@@ -457,44 +516,30 @@ fun AddAssetForm(
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                             )
+                        }
+                    }
 
-                            // Row 5: Tanggal Pengadaan
-                            val calendar = remember(acquisitionDateLong) { Calendar.getInstance().apply { timeInMillis = acquisitionDateLong } }
-                            val startYear = calendar.get(Calendar.YEAR)
-                            val startMonth = calendar.get(Calendar.MONTH)
-                            val startDay = calendar.get(Calendar.DAY_OF_MONTH)
-
-                            val datePickerDialog = remember(context, startYear, startMonth, startDay) {
-                                DatePickerDialog(
-                                    context,
-                                    { _, selectedYear, selectedMonth, selectedDay ->
-                                        val selectedCal = Calendar.getInstance().apply {
-                                            set(Calendar.YEAR, selectedYear)
-                                            set(Calendar.MONTH, selectedMonth)
-                                            set(Calendar.DAY_OF_MONTH, selectedDay)
-                                        }
-                                        acquisitionDateLong = selectedCal.timeInMillis
-                                    },
-                                    startYear,
-                                    startMonth,
-                                    startDay
-                                )
-                            }
-
+                    // Row 5: Tanggal Pengadaan (Inline Calendar)
+                    item {
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        datePickerDialog.show()
+                                        datePickerExpanded = !datePickerExpanded
+                                        categoryExpanded = false
+                                        scope.launch {
+                                            listState.animateScrollToItem(4)
+                                        }
                                     }
                                     .padding(start = 24.dp, end = 24.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.CalendarToday,
+                                    imageVector = Icons.Outlined.CalendarToday,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 val dateText = simpleDateFormat.format(java.util.Date(acquisitionDateLong))
@@ -527,6 +572,18 @@ fun AddAssetForm(
                                 )
                             }
 
+                            AnimatedVisibility(visible = datePickerExpanded) {
+                                Box(modifier = Modifier.padding(bottom = 12.dp)) {
+                                    CompactInlineCalendar(
+                                        selectedDateMillis = acquisitionDateLong,
+                                        onDateSelected = { selectedTime ->
+                                            acquisitionDateLong = selectedTime
+                                        },
+                                        isDark = isDark
+                                    )
+                                }
+                            }
+
                             HorizontalDivider(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -534,8 +591,12 @@ fun AddAssetForm(
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                             )
+                        }
+                    }
 
-                            // Row 6: Harga Beli
+                    // Row 6: Harga Beli
+                    item {
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -543,10 +604,10 @@ fun AddAssetForm(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.AttachMoney,
+                                    imageVector = Icons.Outlined.AttachMoney,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
@@ -587,7 +648,7 @@ fun AddAssetForm(
                                         .onFocusChanged { focusState ->
                                             if (focusState.isFocused) {
                                                 scope.launch {
-                                                    listState.animateScrollToItem(0)
+                                                    listState.animateScrollToItem(5)
                                                 }
                                             }
                                         }
@@ -602,8 +663,12 @@ fun AddAssetForm(
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                             )
+                        }
+                    }
 
-                            // Row 7: Deskripsi / Spesifikasi (TextArea / Multiline murni)
+                    // Row 7: Deskripsi / Spesifikasi (TextArea / Multiline & real-time auto-scroll)
+                    item {
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -611,17 +676,23 @@ fun AddAssetForm(
                                 verticalAlignment = Alignment.Top
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Description,
+                                    imageVector = Icons.Outlined.Description,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                     modifier = Modifier
                                         .padding(top = 12.dp)
-                                        .size(24.dp)
+                                        .size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 TextField(
                                     value = description,
-                                    onValueChange = { description = capitalizeFirstLetter(it) },
+                                    onValueChange = { newValue ->
+                                        description = capitalizeFirstLetter(newValue)
+                                        scope.launch {
+                                            // Real-time scrolling keeps cursor perfectly visible
+                                            listState.animateScrollToItem(6)
+                                        }
+                                    },
                                     placeholder = {
                                         Text(
                                             text = "Spesifikasi & Keterangan Tambahan",
@@ -652,7 +723,7 @@ fun AddAssetForm(
                                         .onFocusChanged { focusState ->
                                             if (focusState.isFocused) {
                                                 scope.launch {
-                                                    listState.animateScrollToItem(0)
+                                                    listState.animateScrollToItem(6)
                                                 }
                                             }
                                         }
@@ -664,12 +735,12 @@ fun AddAssetForm(
                 }
             }
 
-            // Bottom row of final actions ("Batal" and "Simpan") following keyboard dynamically
+            // Bottom actions without extra white leaks, perfectly follow software keyboard
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = slotMetrics.bottomOffset)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 0.dp)
                     .height(56.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -678,7 +749,7 @@ fun AddAssetForm(
                         type != "Kategori" && type.isNotBlank() &&
                         assetList.none { it.inventoryNumber.equals(invNum, ignoreCase = true) }
 
-                // Tombol Batal: flat style
+                // Flat style Cancel button
                 Button(
                     onClick = {
                         keyboardController?.hide()
@@ -699,12 +770,12 @@ fun AddAssetForm(
                 ) {
                     Text(
                         text = "Batal",
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                // Tombol Simpan: flat style
+                // Flat style Save button
                 Button(
                     onClick = {
                         keyboardController?.hide()
@@ -740,9 +811,175 @@ fun AddAssetForm(
                 ) {
                     Text(
                         text = "Simpan",
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        }
+    }
+}
+
+// Beautiful Custom Compact Inline Calendar matching M3 Design guidelines
+@Composable
+fun CompactInlineCalendar(
+    selectedDateMillis: Long,
+    onDateSelected: (Long) -> Unit,
+    isDark: Boolean
+) {
+    val simpleDateHeaderFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
+    var currentMonthCal by remember {
+        mutableStateOf(Calendar.getInstance().apply {
+            timeInMillis = selectedDateMillis
+            set(Calendar.DAY_OF_MONTH, 1)
+        })
+    }
+
+    val daysOfWeek = listOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab")
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(12.dp)
+    ) {
+        // Navigation Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    val newCal = Calendar.getInstance().apply {
+                        timeInMillis = currentMonthCal.timeInMillis
+                        add(Calendar.MONTH, -1)
+                    }
+                    currentMonthCal = newCal
+                },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowLeft,
+                    contentDescription = "Bulan Sebelumnya",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Text(
+                text = simpleDateHeaderFormat.format(currentMonthCal.time),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            IconButton(
+                onClick = {
+                    val newCal = Calendar.getInstance().apply {
+                        timeInMillis = currentMonthCal.timeInMillis
+                        add(Calendar.MONTH, 1)
+                    }
+                    currentMonthCal = newCal
+                },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    contentDescription = "Bulan Berikutnya",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Weekday Labels
+        Row(modifier = Modifier.fillMaxWidth()) {
+            daysOfWeek.forEach { dayName ->
+                Text(
+                    text = dayName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Bold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Calendar Date Grid
+        val calendarHelper = Calendar.getInstance().apply {
+            timeInMillis = currentMonthCal.timeInMillis
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        val firstDayOfWeek = calendarHelper.get(Calendar.DAY_OF_WEEK)
+        val daysInMonth = calendarHelper.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+        val selectedCal = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+
+        val daysList = mutableListOf<Int?>()
+        for (i in 1 until firstDayOfWeek) {
+            daysList.add(null)
+        }
+        for (i in 1..daysInMonth) {
+            daysList.add(i)
+        }
+        while (daysList.size % 7 != 0) {
+            daysList.add(null)
+        }
+
+        daysList.chunked(7).forEach { weekDays ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                weekDays.forEach { dayNum ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (dayNum != null) {
+                            val isSelected = selectedCal.get(Calendar.DAY_OF_MONTH) == dayNum &&
+                                    selectedCal.get(Calendar.MONTH) == currentMonthCal.get(Calendar.MONTH) &&
+                                    selectedCal.get(Calendar.YEAR) == currentMonthCal.get(Calendar.YEAR)
+
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                    .clickable {
+                                        val updatedCal = Calendar.getInstance().apply {
+                                            timeInMillis = currentMonthCal.timeInMillis
+                                            set(Calendar.DAY_OF_MONTH, dayNum)
+                                        }
+                                        onDateSelected(updatedCal.timeInMillis)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = dayNum.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
